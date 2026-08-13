@@ -7,6 +7,7 @@ import { createSpeaker } from '@/composables/useSpeech'
 import {
   useA11y,
   type FontScale,
+  type ThemeMode,
 } from '@/stores/accessibility'
 
 const router = useRouter()
@@ -17,6 +18,7 @@ const {
   setVoiceBroadcast,
   setReduceMotion,
   setElderMode,
+  setTheme,
   resetAccessibility,
 } = useA11y()
 
@@ -26,6 +28,12 @@ const FONT_OPTIONS: Array<{ value: FontScale; label: string }> = [
   { value: 'standard', label: '标准' },
   { value: 'large', label: '大' },
   { value: 'xlarge', label: '特大' },
+]
+
+const THEME_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
+  { value: 'light', label: '浅色' },
+  { value: 'dark', label: '深色' },
+  { value: 'auto', label: '跟随系统' },
 ]
 
 function onElderModeChange(enabled: boolean): void {
@@ -63,6 +71,22 @@ function tryVoice(): void {
         :model-value="settings.elderMode"
         @update:model-value="onElderModeChange"
       />
+    </section>
+
+    <section class="card" aria-labelledby="theme-title">
+      <h2 id="theme-title">外观</h2>
+      <div class="segmented" role="group" aria-label="选择外观模式">
+        <button
+          v-for="option in THEME_OPTIONS"
+          :key="option.value"
+          type="button"
+          :aria-pressed="settings.theme === option.value"
+          @click="setTheme(option.value)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+      <p class="meta-line">深色模式为夜间设计的森林夜配色；跟随系统时会随手机深浅色自动切换。</p>
     </section>
 
     <section class="card" aria-labelledby="font-title">
@@ -125,11 +149,11 @@ function tryVoice(): void {
 <style scoped>
 .back-btn { justify-self: start; }
 .font-preview {
-  background: rgba(37, 55, 48, 0.05);
+  background: var(--well-bg);
   border-radius: 12px;
   padding: 12px 14px;
   color: var(--c-ink-soft);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 var(--hilite);
 }
 html[data-contrast='high'] .font-preview { border: 2px solid #000; background: #fff; }
 </style>

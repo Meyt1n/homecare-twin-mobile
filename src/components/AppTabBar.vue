@@ -76,13 +76,13 @@ function isActive(tab: TabItem): boolean {
   grid-auto-columns: 1fr;
   gap: 2px;
   width: min(100%, 520px);
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--glass-bg);
   -webkit-backdrop-filter: blur(22px) saturate(1.6);
   backdrop-filter: blur(22px) saturate(1.6);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--glass-border);
   border-radius: var(--r-pill);
   padding: 7px;
-  box-shadow: var(--shadow-float), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow: var(--shadow-float), inset 0 1px 0 var(--hilite);
 }
 
 .tabbar-item {
@@ -104,8 +104,8 @@ function isActive(tab: TabItem): boolean {
 
 .tabbar-item[data-active='true'] {
   color: #fff;
-  background: linear-gradient(180deg, #3b7f67, #2f6d5a);
-  box-shadow: 0 8px 18px -8px rgba(47, 109, 90, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: var(--grad-btn);
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 html[data-contrast='high'] .tabbar {

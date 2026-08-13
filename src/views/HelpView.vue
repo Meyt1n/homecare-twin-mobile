@@ -79,14 +79,16 @@ async function speakImportant(): Promise<void> {
 
 <style scoped>
 .emergency-btn {
-  background: linear-gradient(135deg, #de7263 0%, var(--c-danger) 55%, #b84c3b 100%);
+  background: linear-gradient(135deg, #de7263 0%, #d2604f 55%, #b84c3b 100%);
   color: #fff;
   box-shadow: 0 12px 26px -12px rgba(210, 96, 79, 0.65);
+  animation: sos-pulse 2.6s var(--ease) infinite;
 }
-.emergency-btn:hover { background: var(--c-danger-deep); }
+.emergency-btn:hover { filter: brightness(1.08); }
 html[data-contrast='high'] .emergency-btn {
   background: var(--c-danger);
   box-shadow: none;
   border: 2px solid #000;
+  animation: none;
 }
 </style>

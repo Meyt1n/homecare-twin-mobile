@@ -133,13 +133,26 @@ onBeforeUnmount(releasePreview)
     </label>
 
     <div class="card">
-      <div v-if="previewUrl" class="preview-box">
-        <img :src="previewUrl" alt="待识别的药盒照片预览" />
+      <div
+        class="viewfinder"
+        :data-scanning="stage === 'checking' || stage === 'recognizing'"
+        :data-has-photo="Boolean(previewUrl)"
+      >
+        <img v-if="previewUrl" :src="previewUrl" alt="待识别的药盒照片预览" />
+        <div v-else class="vf-hint">
+          <AppIcon name="camera" :size="34" />
+          <p>把药盒正面放满取景框<br />光线充足、避免反光</p>
+        </div>
+        <span class="vf-corner vf-tl" aria-hidden="true"></span>
+        <span class="vf-corner vf-tr" aria-hidden="true"></span>
+        <span class="vf-corner vf-bl" aria-hidden="true"></span>
+        <span class="vf-corner vf-br" aria-hidden="true"></span>
+        <span
+          v-if="stage === 'checking' || stage === 'recognizing'"
+          class="vf-line"
+          aria-hidden="true"
+        ></span>
       </div>
-      <p v-else class="empty-state">
-        <AppIcon name="camera" :size="30" />
-        尚未拍摄。请把药盒正面放满取景框，避免反光。
-      </p>
       <div class="btn-row">
         <label class="btn btn-lg" :data-disabled="stage === 'checking' || stage === 'recognizing'">
           <AppIcon name="camera" :size="20" />
@@ -234,15 +247,77 @@ onBeforeUnmount(releasePreview)
 </template>
 
 <style scoped>
-.preview-box {
-  display: flex;
-  justify-content: center;
-  background: var(--c-brand-softer);
-  border: 1px dashed var(--c-line-strong);
+/* ---- 相机取景框 ---- */
+.viewfinder {
+  position: relative;
+  aspect-ratio: 4 / 3;
   border-radius: calc(var(--r-card) - 8px);
+  background:
+    radial-gradient(95% 95% at 50% 42%, var(--c-brand-softer) 0%, transparent 78%),
+    var(--well-bg);
   overflow: hidden;
+  display: grid;
+  place-items: center;
 }
-.preview-box img { max-width: 100%; max-height: 300px; object-fit: contain; display: block; }
+.viewfinder img { width: 100%; height: 100%; object-fit: contain; }
+
+.vf-hint {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  color: var(--c-ink-faint);
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.vf-hint svg { animation: vf-pulse 2.4s ease-in-out infinite alternate; color: var(--c-brand); }
+
+.vf-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 3.5px solid var(--c-brand);
+  transition: border-color var(--speed);
+}
+.vf-tl { top: 12px; left: 12px; border-right: 0; border-bottom: 0; border-top-left-radius: 13px; }
+.vf-tr { top: 12px; right: 12px; border-left: 0; border-bottom: 0; border-top-right-radius: 13px; }
+.vf-bl { bottom: 12px; left: 12px; border-right: 0; border-top: 0; border-bottom-left-radius: 13px; }
+.vf-br { bottom: 12px; right: 12px; border-left: 0; border-top: 0; border-bottom-right-radius: 13px; }
+
+.viewfinder[data-has-photo='true'] .vf-corner { border-color: var(--c-calm); }
+.viewfinder[data-scanning='true'] .vf-corner {
+  border-color: var(--c-accent);
+  animation: vf-blink 0.9s ease-in-out infinite alternate;
+}
+
+.vf-line {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 10%;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, transparent, #57d8a8 18%, #a5f5d3 50%, #57d8a8 82%, transparent);
+  box-shadow: 0 0 16px 3px rgba(87, 216, 168, 0.55);
+  animation: vf-scan 2.1s ease-in-out infinite;
+}
+
+@keyframes vf-scan {
+  0%, 100% { top: 9%; }
+  50% { top: 88%; }
+}
+@keyframes vf-pulse {
+  from { transform: scale(1); opacity: 0.72; }
+  to { transform: scale(1.12); opacity: 1; }
+}
+@keyframes vf-blink {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
+
+html[data-contrast='high'] .viewfinder { border: 2px solid #000; }
+html[data-contrast='high'] .vf-corner { border-color: #000; animation: none; }
+html[data-contrast='high'] .vf-line { background: #000; box-shadow: none; }
 .visually-hidden-input {
   position: absolute;
   width: 1px;
@@ -259,10 +334,10 @@ onBeforeUnmount(releasePreview)
 .metric-grid li {
   display: grid;
   gap: 2px;
-  background: rgba(37, 55, 48, 0.05);
+  background: var(--well-bg);
   border-radius: 12px;
   padding: 9px 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 var(--hilite);
 }
 .metric-grid strong[data-passed='false'] { color: var(--c-danger-deep); }
 html[data-contrast='high'] .metric-grid li { border: 2px solid #000; background: #fff; }

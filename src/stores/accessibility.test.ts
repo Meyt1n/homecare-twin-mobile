@@ -7,9 +7,11 @@ import {
   loadSettings,
   normalizeSettings,
   resetAccessibility,
+  resolveTheme,
   setElderMode,
   setFontScale,
   setHighContrast,
+  setTheme,
   useA11y,
 } from './accessibility'
 
@@ -82,5 +84,36 @@ describe('无障碍设置 store', () => {
     )
     expect(document.documentElement.dataset.contrast).toBe('high')
     expect(document.documentElement.dataset.motion).toBe('reduced')
+  })
+
+  it('外观默认为跟随系统，可切换为深色并写入 <html>', () => {
+    const { settings } = useA11y()
+    expect(settings.theme).toBe('auto')
+
+    setTheme('dark')
+    expect(settings.theme).toBe('dark')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+
+    setTheme('light')
+    expect(document.documentElement.dataset.theme).toBe('light')
+  })
+
+  it('resolveTheme：auto 模式跟随系统深浅色，显式模式不受系统影响', () => {
+    expect(resolveTheme('auto', true)).toBe('dark')
+    expect(resolveTheme('auto', false)).toBe('light')
+    expect(resolveTheme('dark', false)).toBe('dark')
+    expect(resolveTheme('light', true)).toBe('light')
+  })
+
+  it('auto 模式下 apply 按系统深浅写入解析结果', () => {
+    applySettingsToDocument({ ...DEFAULT_SETTINGS, theme: 'auto' }, document, true)
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    applySettingsToDocument({ ...DEFAULT_SETTINGS, theme: 'auto' }, document, false)
+    expect(document.documentElement.dataset.theme).toBe('light')
+  })
+
+  it('normalizeSettings 拒绝非法主题值', () => {
+    expect(normalizeSettings({ theme: 'neon' }).theme).toBe('auto')
+    expect(normalizeSettings({ theme: 'dark' }).theme).toBe('dark')
   })
 })

@@ -89,7 +89,10 @@ function restoreDemoData(): void {
     </RouterLink>
 
     <section class="card" aria-labelledby="contact-title">
-      <h2 id="contact-title">紧急联系人</h2>
+      <div class="h-icon-row">
+        <span class="row-icon" data-tone="danger" aria-hidden="true"><AppIcon name="phone" :size="16" /></span>
+        <h2 id="contact-title">紧急联系人</h2>
+      </div>
       <label class="field">
         称呼
         <input v-model="session.caregiverName" type="text" placeholder="例如：女儿 王芳" @change="persistSession" />
@@ -102,7 +105,10 @@ function restoreDemoData(): void {
     </section>
 
     <section class="card" aria-labelledby="source-title">
-      <h2 id="source-title">数据来源</h2>
+      <div class="h-icon-row">
+        <span class="row-icon" data-tone="info" aria-hidden="true"><AppIcon name="refresh" :size="16" /></span>
+        <h2 id="source-title">数据来源</h2>
+      </div>
       <fieldset class="mode-fieldset">
         <legend class="meta-line">选择应用连接的数据</legend>
         <label class="mode-option">
@@ -172,7 +178,10 @@ function restoreDemoData(): void {
     </section>
 
     <section class="card" aria-labelledby="privacy-title">
-      <h2 id="privacy-title">隐私与边界</h2>
+      <div class="h-icon-row">
+        <span class="row-icon" data-tone="calm" aria-hidden="true"><AppIcon name="shield" :size="16" /></span>
+        <h2 id="privacy-title">隐私与边界</h2>
+      </div>
       <ul class="divided-list">
         <li>家庭健康数据默认不出网；本应用仅连接家庭可信域内的服务器。</li>
         <li>照护者只能看到被精细授权的字段；授权可随时在网页端撤回。</li>
@@ -183,7 +192,10 @@ function restoreDemoData(): void {
     </section>
 
     <section class="card" aria-labelledby="about-title">
-      <h2 id="about-title">关于</h2>
+      <div class="h-icon-row">
+        <span class="row-icon" data-tone="accent" aria-hidden="true"><AppIcon name="heart" :size="16" /></span>
+        <h2 id="about-title">关于</h2>
+      </div>
       <p class="meta-line">家健镜随身版 v0.1.0 · 教学演示，不用于诊断或治疗</p>
       <p class="meta-line">
         配套网页端与后端：
@@ -214,12 +226,12 @@ function restoreDemoData(): void {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  background: rgba(37, 55, 48, 0.05);
+  background: var(--well-bg);
   border: 1.5px solid transparent;
   border-radius: var(--r-btn);
   padding: 12px 14px;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 var(--hilite);
   transition: border-color var(--speed), background var(--speed);
 }
 .mode-option:has(input:checked) {

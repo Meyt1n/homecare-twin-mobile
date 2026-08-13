@@ -22,6 +22,10 @@ import AppTabBar from '@/components/AppTabBar.vue'
     </svg>
   </div>
 
-  <RouterView />
+  <RouterView v-slot="{ Component }">
+    <Transition name="page" mode="out-in">
+      <component :is="Component" />
+    </Transition>
+  </RouterView>
   <AppTabBar />
 </template>

@@ -7,7 +7,7 @@ import PrivacyBadge from '@/components/PrivacyBadge.vue'
 import { activeProvider } from '@/data'
 import { memberRoleLabel } from '@/data/labels'
 import type { MemberSummary } from '@/data/types'
-import { formatDay } from '@/utils/format'
+import { avatarHue, formatDay } from '@/utils/format'
 
 const members = ref<MemberSummary[]>([])
 const loading = ref(true)
@@ -52,7 +52,7 @@ onMounted(async () => {
         :to="`/family/${member.id}`"
       >
         <div class="member-row">
-          <span class="avatar" aria-hidden="true">{{ member.avatarText }}</span>
+          <span class="avatar" :data-hue="avatarHue(member.name)" aria-hidden="true">{{ member.avatarText }}</span>
           <div class="member-info">
             <div class="card-title-row">
               <strong>{{ member.name }}</strong>

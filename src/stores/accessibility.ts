@@ -3,6 +3,9 @@ import { reactive, readonly } from 'vue'
 /** 字号档位：标准 / 大 / 特大 */
 export type FontScale = 'standard' | 'large' | 'xlarge'
 
+/** 外观：浅色 / 深色 / 跟随系统 */
+export type ThemeMode = 'light' | 'dark' | 'auto'
+
 export interface AccessibilitySettings {
   /** 长辈模式：特大字号 + 语音播报 + 简化导航 + 更大触控目标 */
   elderMode: boolean
@@ -10,6 +13,7 @@ export interface AccessibilitySettings {
   highContrast: boolean
   voiceBroadcast: boolean
   reduceMotion: boolean
+  theme: ThemeMode
 }
 
 export const A11Y_STORAGE_KEY = 'hct-mobile.a11y.v1'
@@ -20,9 +24,11 @@ export const DEFAULT_SETTINGS: AccessibilitySettings = {
   highContrast: false,
   voiceBroadcast: false,
   reduceMotion: false,
+  theme: 'auto',
 }
 
 const FONT_SCALES: FontScale[] = ['standard', 'large', 'xlarge']
+const THEME_MODES: ThemeMode[] = ['light', 'dark', 'auto']
 
 /** 把任意持久化数据规范化为合法设置，异常输入回退默认值。 */
 export function normalizeSettings(raw: unknown): AccessibilitySettings {
@@ -31,12 +37,16 @@ export function normalizeSettings(raw: unknown): AccessibilitySettings {
   const fontScale = FONT_SCALES.includes(record.fontScale as FontScale)
     ? (record.fontScale as FontScale)
     : DEFAULT_SETTINGS.fontScale
+  const theme = THEME_MODES.includes(record.theme as ThemeMode)
+    ? (record.theme as ThemeMode)
+    : DEFAULT_SETTINGS.theme
   return {
     elderMode: record.elderMode === true,
     fontScale,
     highContrast: record.highContrast === true,
     voiceBroadcast: record.voiceBroadcast === true,
     reduceMotion: record.reduceMotion === true,
+    theme,
   }
 }
 
@@ -61,13 +71,36 @@ export function saveSettings(
   }
 }
 
+function systemPrefersDark(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+/** auto 模式跟随系统深浅色。 */
+export function resolveTheme(mode: ThemeMode, systemDark: boolean): 'light' | 'dark' {
+  if (mode === 'auto') return systemDark ? 'dark' : 'light'
+  return mode
+}
+
 /** 把设置写到 <html> 的 data-* 属性上，驱动全局 CSS 变量。 */
-export function applySettingsToDocument(settings: AccessibilitySettings, doc: Document): void {
+export function applySettingsToDocument(
+  settings: AccessibilitySettings,
+  doc: Document,
+  systemDark: boolean = systemPrefersDark(),
+): void {
   const root = doc.documentElement
+  const theme = resolveTheme(settings.theme, systemDark)
   root.dataset.fontScale = settings.fontScale
   root.dataset.contrast = settings.highContrast ? 'high' : 'normal'
   root.dataset.motion = settings.reduceMotion ? 'reduced' : 'normal'
   root.dataset.elder = settings.elderMode ? 'on' : 'off'
+  root.dataset.theme = theme
+
+  // 状态栏/浏览器工具条颜色跟随主题（高对比走浅色方案）。
+  const meta = doc.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+  if (meta) {
+    meta.content = settings.highContrast ? '#ffffff' : theme === 'dark' ? '#10201a' : '#2f6d5a'
+  }
 }
 
 const state = reactive<AccessibilitySettings>({ ...DEFAULT_SETTINGS })
@@ -83,6 +116,14 @@ export function initAccessibility(): void {
     Object.assign(state, loadSettings(localStorage))
   }
   if (typeof document !== 'undefined') applySettingsToDocument(state, document)
+
+  // 跟随系统模式下，系统深浅色切换时实时生效。
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    media.addEventListener?.('change', () => {
+      if (typeof document !== 'undefined') applySettingsToDocument(state, document)
+    })
+  }
 }
 
 export function setFontScale(scale: FontScale): void {
@@ -102,6 +143,11 @@ export function setVoiceBroadcast(enabled: boolean): void {
 
 export function setReduceMotion(enabled: boolean): void {
   state.reduceMotion = enabled
+  persistAndApply()
+}
+
+export function setTheme(mode: ThemeMode): void {
+  state.theme = mode
   persistAndApply()
 }
 
@@ -134,6 +180,7 @@ export function useA11y() {
     setVoiceBroadcast,
     setReduceMotion,
     setElderMode,
+    setTheme,
     resetAccessibility,
   }
 }

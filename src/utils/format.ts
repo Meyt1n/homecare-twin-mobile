@@ -28,6 +28,13 @@ export function formatDay(iso: string): string {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
 }
 
+/** 按名字稳定映射到 1-4 号头像配色（绿/蜜桃/湖青/丁香）。 */
+export function avatarHue(text: string): number {
+  let sum = 0
+  for (const char of text) sum += char.codePointAt(0) ?? 0
+  return (sum % 4) + 1
+}
+
 export function greetingByHour(hour: number): string {
   if (hour < 5) return '夜深了'
   if (hour < 9) return '早上好'

@@ -7,7 +7,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import { activeProvider } from '@/data'
 import { eventStatusLabel, memberRoleLabel } from '@/data/labels'
 import type { MemberDetail } from '@/data/types'
-import { formatDateTime, formatDay } from '@/utils/format'
+import { avatarHue, formatDateTime, formatDay } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,7 +43,7 @@ onMounted(async () => {
     <template v-else-if="detail">
       <header class="card">
         <div class="member-row">
-          <span class="avatar" aria-hidden="true">{{ detail.summary.avatarText }}</span>
+          <span class="avatar" :data-hue="avatarHue(detail.summary.name)" aria-hidden="true">{{ detail.summary.avatarText }}</span>
           <div class="member-info">
             <h1>{{ detail.summary.name }}</h1>
             <p class="meta-line">
