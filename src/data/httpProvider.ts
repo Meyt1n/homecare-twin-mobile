@@ -5,12 +5,15 @@ import type {
   DataProvider,
   MemberDetail,
   MemberSummary,
+  MedicationItem,
   ProviderInfo,
   QualityCheckResult,
   RecognitionCandidate,
   RiskCard,
+  RiskLevel,
   TaskAction,
   TaskActionPayload,
+  TaskLevel,
   TimelineItem,
   TodaySnapshot,
 } from './types'
@@ -18,9 +21,12 @@ import type {
 /**
  * 联机模式适配器：调用主仓库（issedu_ysu2026_3709）FastAPI 的既有接口。
  *
- * 诚实状态说明：这是移动端的起步适配层——成员、时间线、风险、计划确认/延期/跳过、
- * 质量门控与视觉任务创建都调用真实 API；“今日任务”由计划类事件推导，字段映射
- * 需要在与家庭服务器联调时按 OpenAPI 校准后才能宣布“已验证”。
+ * 事件语义与后端 `app/projection.py`、`app/routes.py` 联调对齐（2026-08-13）：
+ * - 计划事实：`plan_created` / `plan_updated`（payload: drug, schedule, 可选 due_time/level）；
+ * - 计划动作：`plan_confirmed` / `plan_deferred` / `plan_skipped`（payload.plan_event_id 指向计划事件）；
+ *   动作在服务端按计划幂等（confirm:<id>），因此任务状态取最后一条动作事件，不做“每日重置”；
+ * - 时间线只返回已确认事件，按 sequence_no 升序；
+ * - 用药事实：`medication_added`（payload.drug，可选 expiry_date/stock/ingredient）。
  */
 
 interface SessionContext {
@@ -32,16 +38,23 @@ function createIdempotencyKey(): string {
   return globalThis.crypto?.randomUUID?.() ?? `mobile-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-const PLAN_EVENT_TYPES = new Set(['CARE_PLAN_CREATED', 'CARE_PLAN_UPDATED', 'PLAN_REMINDER'])
+const PLAN_FACT_TYPES = new Set(['plan_created', 'plan_updated'])
+const PLAN_ACTION_TYPES = new Set(['plan_confirmed', 'plan_deferred', 'plan_skipped'])
+const TASK_LEVELS: TaskLevel[] = ['INFO', 'GENERAL', 'HIGH', 'URGENT']
+const RISK_ORDER: Record<string, number> = { SEVERE: 0, WARNING: 1, INFO: 2, TIP: 3 }
 
-function isPlanLikeEvent(event: HealthEvent): boolean {
-  return PLAN_EVENT_TYPES.has(event.event_type) || event.event_type.startsWith('CARE_PLAN')
+function textOf(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
 }
 
 function eventTitle(event: HealthEvent): string {
   const payload = event.payload ?? {}
-  const title = payload['title'] ?? payload['name'] ?? payload['summary']
-  if (typeof title === 'string' && title.trim()) return title
+  const drug = textOf(payload['drug'])
+  const schedule = textOf(payload['schedule'])
+  if (drug && schedule) return `${drug}：${schedule}`
+  const direct =
+    textOf(payload['title']) || textOf(payload['name']) || textOf(payload['summary']) || drug
+  if (direct) return direct
   return event.event_type
 }
 
@@ -53,6 +66,85 @@ function toTimelineItem(event: HealthEvent): TimelineItem {
     confirmationStatus: event.confirmation_status,
     occurredAt: event.occurred_at ?? event.created_at,
     source: event.source,
+  }
+}
+
+function planDueAt(event: HealthEvent): string {
+  const payload = event.payload ?? {}
+  const dueTime = textOf(payload['due_time'])
+  const match = /^(\d{1,2}):(\d{2})$/.exec(dueTime)
+  const due = new Date()
+  if (match) {
+    due.setHours(Number(match[1]), Number(match[2]), 0, 0)
+  } else {
+    due.setHours(9, 0, 0, 0)
+  }
+  return due.toISOString()
+}
+
+function planLevel(event: HealthEvent): TaskLevel {
+  const raw = textOf((event.payload ?? {})['level']).toUpperCase()
+  return (TASK_LEVELS as string[]).includes(raw) ? (raw as TaskLevel) : 'GENERAL'
+}
+
+/** 从时间线推导任务：计划事实 + 指向它的最后一条动作事件。 */
+export function deriveTasksFromEvents(
+  events: HealthEvent[],
+  memberId: string,
+  memberName: string,
+): CareTask[] {
+  const plans = events.filter(e => PLAN_FACT_TYPES.has(e.event_type))
+  const actions = events.filter(e => PLAN_ACTION_TYPES.has(e.event_type))
+
+  return plans.map(plan => {
+    const related = actions.filter(a => textOf((a.payload ?? {})['plan_event_id']) === plan.id)
+    const latest = related.length > 0 ? related[related.length - 1]! : null
+
+    const task: CareTask = {
+      id: `plan-${plan.id}`,
+      memberId,
+      memberName,
+      title: eventTitle(plan),
+      detail: '来自家庭服务器的计划事实；确认、延期、跳过会写回事件中心并可审计。',
+      level: planLevel(plan),
+      dueAt: planDueAt(plan),
+      status: 'PENDING',
+      planEventId: plan.id,
+    }
+
+    if (latest) {
+      task.lastActionAt = latest.occurred_at ?? latest.created_at
+      if (latest.event_type === 'plan_confirmed') {
+        task.status = 'CONFIRMED'
+      } else if (latest.event_type === 'plan_skipped') {
+        task.status = 'SKIPPED'
+        task.skipReason = textOf((latest.payload ?? {})['reason']) || undefined
+      } else {
+        task.status = 'DEFERRED'
+        const delay = Number((latest.payload ?? {})['delay_hours'] ?? 0)
+        const base = new Date(task.lastActionAt).getTime()
+        if (Number.isFinite(base) && delay > 0) {
+          task.dueAt = new Date(base + delay * 3_600_000).toISOString()
+        }
+      }
+    }
+    return task
+  })
+}
+
+function toMedication(event: HealthEvent): MedicationItem {
+  const payload = event.payload ?? {}
+  const expiry = textOf(payload['expiry_date'])
+  const stock = Number(payload['stock'])
+  const expiryTime = expiry ? Date.parse(expiry) : Number.NaN
+  return {
+    name: textOf(payload['drug']) || event.event_type,
+    spec: textOf(payload['spec']),
+    schedule: textOf(payload['schedule']),
+    stockDaysLeft: Number.isFinite(stock) ? stock : null,
+    expiryDate: expiry || null,
+    expired: Number.isFinite(expiryTime) ? expiryTime < Date.now() : false,
+    confirmed: event.confirmation_status === 'CONFIRMED',
   }
 }
 
@@ -86,6 +178,15 @@ export class HttpDataProvider implements DataProvider {
     return first.id
   }
 
+  private async memberName(memberId: string): Promise<string> {
+    const cached = this.memberCache.get(memberId)
+    if (cached) return cached.display_name
+    const householdId = await this.resolveHouseholdId()
+    const members = await this.client.listMembers(householdId, this.options())
+    this.memberCache = new Map(members.map(m => [m.id, m]))
+    return this.memberCache.get(memberId)?.display_name ?? '成员'
+  }
+
   info(): ProviderInfo {
     return {
       mode: 'live',
@@ -113,7 +214,9 @@ export class HttpDataProvider implements DataProvider {
       }
       try {
         const timeline = await this.client.listMemberTimeline(householdId, member.id, this.options())
-        pending = timeline.filter(e => isPlanLikeEvent(e) && e.confirmation_status === 'UNCONFIRMED').length
+        pending = deriveTasksFromEvents(timeline, member.id, member.display_name).filter(
+          t => t.status === 'PENDING' || t.status === 'DEFERRED',
+        ).length
       } catch {
         pending = 0
       }
@@ -139,53 +242,41 @@ export class HttpDataProvider implements DataProvider {
     if (!summary) throw new Error('成员不存在或未获授权')
 
     let timeline: MemberDetail['timeline']
+    let medications: MemberDetail['medications']
     try {
       const events = await this.client.listMemberTimeline(householdId, memberId, this.options())
-      timeline = events.map(toTimelineItem)
+      timeline = [...events].reverse().map(toTimelineItem)
+      medications = events.filter(e => e.event_type === 'medication_added').map(toMedication)
     } catch {
       timeline = 'UNAUTHORIZED'
+      medications = 'UNAUTHORIZED'
     }
 
     return {
       summary,
-      // 用药结构化投影接口在主仓库仍在交付中，联机模式暂以时间线为主。
-      medications: 'UNAUTHORIZED',
+      medications,
       timeline,
+      // 授权列表接口仅家庭 owner 可读，移动端暂不展示（在网页端管理）。
       authorizations: [],
     }
   }
 
   async getTodaySnapshot(memberId: string): Promise<TodaySnapshot> {
     const householdId = await this.resolveHouseholdId()
+    const memberName = await this.memberName(memberId)
     const [events, risks] = await Promise.all([
       this.client.listMemberTimeline(householdId, memberId, this.options()),
       this.listRisks(memberId),
     ])
 
-    const memberName = this.memberCache.get(memberId)?.display_name ?? '成员'
-    const tasks: CareTask[] = events
-      .filter(e => isPlanLikeEvent(e) && e.confirmation_status === 'UNCONFIRMED')
-      .map(e => {
-        const task: CareTask = {
-          id: `plan-${e.id}`,
-          memberId,
-          memberName,
-          title: eventTitle(e),
-          detail: '来自家庭服务器的计划事件，确认/延期/跳过会写回事件中心。',
-          level: 'GENERAL',
-          dueAt: e.occurred_at ?? e.created_at,
-          status: 'PENDING',
-          planEventId: e.id,
-        }
-        return task
-      })
+    const tasks = deriveTasksFromEvents(events, memberId, memberName)
     for (const task of tasks) this.taskCache.set(task.id, task)
 
     return {
       memberId,
       tasks,
       risks,
-      recentEvents: events.slice(0, 4).map(toTimelineItem),
+      recentEvents: [...events].reverse().slice(0, 4).map(toTimelineItem),
     }
   }
 
@@ -193,35 +284,41 @@ export class HttpDataProvider implements DataProvider {
     const householdId = await this.resolveHouseholdId()
     if (!memberId) {
       const members = await this.client.listMembers(householdId, this.options())
+      this.memberCache = new Map(members.map(m => [m.id, m]))
       const all = await Promise.all(members.map(m => this.listRisks(m.id).catch(() => [] as RiskCard[])))
-      return all.flat()
+      return all
+        .flat()
+        .sort((a, b) => (RISK_ORDER[a.level] ?? 9) - (RISK_ORDER[b.level] ?? 9))
     }
-    const memberName = this.memberCache.get(memberId)?.display_name ?? '成员'
+    const memberName = await this.memberName(memberId)
     const response = await this.client.listMemberRisks(householdId, memberId, this.options())
-    return response.alerts.map(alert => ({
-      ruleId: alert.rule_id,
-      ruleVersion: '服务端版本',
-      level: alert.level,
-      message: alert.message,
-      memberId,
-      memberName,
-      createdAt: alert.created_at,
-      sourceCount: alert.source_event_ids.length,
-      explanation: '由家庭服务器确定性规则计算得出；证据事件见下方列表。',
-      suggestion: '请查看依据后在授权范围内处理；如有医疗疑问请联系医生或药师。',
-      acknowledged: false,
-      sourceEvents: [],
-    }))
+    return response.alerts
+      .map(alert => ({
+        ruleId: alert.rule_id,
+        ruleVersion: '服务端 rules-v0',
+        level: alert.level as RiskLevel,
+        message: alert.message,
+        memberId,
+        memberName,
+        createdAt: alert.created_at,
+        sourceCount: alert.source_event_ids.length,
+        explanation:
+          '由家庭服务器确定性规则（过期/库存/重复成分/过敏/相互作用）基于已确认事件计算得出，不是模型推断。',
+        suggestion: '请查看依据后在授权范围内处理；如有医疗疑问请联系医生或药师。',
+        acknowledged: false,
+        sourceEvents: [],
+      }))
+      .sort((a, b) => (RISK_ORDER[a.level] ?? 9) - (RISK_ORDER[b.level] ?? 9))
   }
 
   async getRiskDetail(memberId: string, ruleId: string): Promise<RiskCard> {
     const householdId = await this.resolveHouseholdId()
+    const memberName = await this.memberName(memberId)
     const detail = await this.client.getRiskDetail(householdId, memberId, ruleId, this.options())
-    const memberName = this.memberCache.get(memberId)?.display_name ?? '成员'
     return {
       ruleId: detail.alert.rule_id,
-      ruleVersion: '服务端版本',
-      level: detail.alert.level,
+      ruleVersion: '服务端 rules-v0',
+      level: detail.alert.level as RiskLevel,
       message: detail.alert.message,
       memberId,
       memberName,
@@ -261,6 +358,7 @@ export class HttpDataProvider implements DataProvider {
       const hours = payload.deferHours ?? 1
       await this.client.deferCarePlan(householdId, task.memberId, task.planEventId, hours, options)
       task.status = 'DEFERRED'
+      task.dueAt = new Date(Date.now() + hours * 3_600_000).toISOString()
     } else {
       const reason = payload.reason?.trim()
       if (!reason) throw new Error('跳过前请填写原因，便于家人了解情况')

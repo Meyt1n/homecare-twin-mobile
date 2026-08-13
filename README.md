@@ -45,7 +45,8 @@
 - vue-router 4（hash 路由，任意静态托管可用）；
 - 无 UI 组件库：手写设计系统（CSS 自定义属性驱动无障碍模式）；
 - vitest + happy-dom 单元测试；
-- PWA manifest，支持"添加到主屏幕"；后续可用 Capacitor 套壳为原生 App。
+- PWA manifest，支持"添加到主屏幕"；
+- Capacitor 8 安卓壳：同一套 Web 代码打包为原生 Android 应用（见下文"安卓应用"）。
 
 ## 快速开始
 
@@ -69,24 +70,68 @@ npm run build      # 产物输出到 dist/
 | 模式 | 状态 | 说明 |
 |---|---|---|
 | 演示模式（默认） | 完整可体验 | 内置**虚构**家庭数据（人物、药品、风险均为编造，明确标注"演示"），不连接任何服务器，用于教学演示与交互验收 |
-| 家庭服务器（联机） | 起步适配，待联调验收 | 调用主仓库 FastAPI 既有接口：成员、时间线、风险及证据、计划确认/延期/跳过、图片质量门控、视觉任务创建；"今日任务"由计划类事件推导，字段映射需与后端联调后按 OpenAPI 校准 |
+| 家庭服务器（联机） | 已与本地后端联调（2026-08-13） | 调用主仓库 FastAPI 既有接口；事件语义已按后端 `app/projection.py` 校准（见下） |
 
-联机模式的已知限制（如实记录，不冒充完成）：
+### 已联调验证的链路（2026-08-13，本地 SQLite 后端）
 
-- 药盒识别链路只到"创建视觉任务"，候选确认仍需回网页端人工复核中心（这也是产品设计：确认动作留在复核页）；
-- 风险"我已知晓"回写、结构化用药投影、授权列表读取暂无对应服务端接口，界面会如实提示而不是伪装成功；
-- 登录 / PIN 二次确认沿用主仓库开发期的 `X-Actor-Id` 头约定，正式鉴权跟随主仓库 HCT-107 交付。
+- 家庭 / 成员列表（含照护者视角的 API 层过滤：`X-Access-Purpose` 必须与授权 purpose 匹配）；
+- 成员时间线（仅已确认事件，升序）与用药清单（由 `medication_added` 事件推导）；
+- 确定性规则风险：`allergy_conflict`（SEVERE）与 `interaction`（INFO）经移动端链路可见，含证据事件详情；
+- 今日任务：由 `plan_created` / `plan_updated` 计划事实 + 最后一条 `plan_confirmed` / `plan_deferred` / `plan_skipped` 动作事件推导；确认/延期/跳过写回事件中心（服务端按计划幂等）；
+- 图片质量门控与视觉任务创建（识别候选确认仍在网页端复核中心完成，这是产品设计）。
 
-联机开发时可用环境变量把 dev 代理指向家庭服务器：
+### 联调步骤
 
 ```powershell
-$env:HOMECARE_API = "http://192.168.1.10:8000"; npm run dev
+# 1. 在主仓库启动后端（独立 SQLite + 放开本页面所需 CORS）
+$env:DATABASE_URL = "sqlite+pysqlite:///./homecare-mobile-demo.sqlite3"
+$env:CORS_ORIGINS = "http://localhost:5173,http://localhost:5175,https://localhost,http://localhost,capacitor://localhost"
+$env:PYTHONPATH = "<主仓库>\src\api;<主仓库>\src"
+uv run alembic upgrade head
+uv run uvicorn app.main:app --app-dir src/api --host 0.0.0.0 --port 8000
+
+# 2. 在本仓库写入虚构联调数据（幂等，可重复执行）
+npm run seed:live            # 等价于 node scripts/seed-live-demo.mjs
+
+# 3. 启动移动端并指向后端
+$env:HOMECARE_API = "http://127.0.0.1:8000"; npm run dev
 ```
+
+应用内切到"我的 → 数据来源 → 家庭服务器"，身份填 `dev-wang`（owner）或 `dev-uncle`（仅被授权读王秀兰事件的照护者），目的代码保持 `family-care`。网页端（主仓库 `npm run dev:web`）连同一后端即可两端互通。
+
+### 联机模式的已知限制（如实记录，不冒充完成）
+
+- 药盒识别链路只到"创建视觉任务"，候选确认仍需回网页端人工复核中心；
+- 风险"我已知晓"回写、授权列表读取暂无对应服务端接口，界面会如实提示而不是伪装成功；
+- 登录 / PIN 二次确认沿用主仓库开发期的 `X-Actor-Id` 头约定，正式鉴权跟随主仓库 HCT-107 交付；
+- 联调发现的主仓库缺口（已反馈，待主仓库按 Story 流程处理）：`build_relationship_graph` 投影丢弃
+  `expiry_date` / `stock` / `ingredient` 字段，导致过期、低库存、重复成分规则实际无法触发。
+
+## 安卓应用（Capacitor）
+
+同一套代码通过 Capacitor 打包为原生 Android 应用，WebView 内置打包产物，联机数据走"我的 → 数据来源"里配置的家庭服务器地址（`AndroidManifest` 已允许家庭局域网明文 http）。
+
+```powershell
+npm run android:sync                 # 构建 Web 产物并同步到 android/ 工程
+cd android
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"   # 或任何 JDK 21
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+.\gradlew.bat assembleDebug          # 产物：android\app\build\outputs\apk\debug\app-debug.apk
+```
+
+说明：
+
+- 首次构建需要 Android SDK（Android Studio 自带）；`android/local.properties` 由本机自动生成，不入库；
+- 仓库路径含中文目录时依赖 `android.overridePathCheck=true`（已配置），个别环境仍失败时可把仓库放到纯 ASCII 路径构建；
+- 把 `app-debug.apk` 传到手机安装（需允许安装未知来源应用），或连接手机后 `npx cap run android`；
+- 手机与家庭服务器需在同一局域网，服务器地址填电脑的局域网 IP，例如 `http://192.168.1.10:8000`。
 
 ## 目录结构
 
 ```text
+android/             Capacitor 生成的原生安卓工程（构建产物与 local.properties 不入库）
 public/              PWA manifest 与图标
+scripts/             联调造数脚本（虚构数据）
 src/
   api/               与主仓库对齐的 API 契约与客户端（X-Actor-Id 等请求头一致）
   components/        TabBar、任务卡、等级标签、开关等基础组件
@@ -97,6 +142,7 @@ src/
   utils/             时间格式化等
   views/             9 个页面
 docs/                无障碍模式设计说明
+capacitor.config.ts  安卓壳配置（appId、webDir）
 ```
 
 ## 边界与隐私
