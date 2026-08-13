@@ -8,6 +8,7 @@ import { ApiClient } from '@/api/client'
 import { resetDemoData } from '@/data/demoProvider'
 import { useA11y } from '@/stores/accessibility'
 import { useSession } from '@/stores/session'
+import { tapFeedback } from '@/utils/haptics'
 
 const { settings, setElderMode } = useA11y()
 const { session, updateSession } = useSession()
@@ -19,6 +20,7 @@ const demoResetMessage = ref('')
 
 function onElderModeChange(enabled: boolean): void {
   setElderMode(enabled)
+  tapFeedback([12, 60, 18])
   feedbackSpeaker.speak(
     enabled ? '长辈模式已开启，字号已调大，语音播报已打开。' : '长辈模式已关闭。',
   )

@@ -5,6 +5,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import LevelTag from '@/components/LevelTag.vue'
 import PrivacyBadge from '@/components/PrivacyBadge.vue'
+import SkeletonCard from '@/components/SkeletonCard.vue'
 import { createSpeaker } from '@/composables/useSpeech'
 import { activeProvider } from '@/data'
 import { riskLevelLabel, riskLevelTone } from '@/data/labels'
@@ -100,9 +101,10 @@ onMounted(reload)
     </p>
     <p v-if="error" class="notice" data-tone="error" role="alert">{{ error }}</p>
 
-    <section v-if="loading" class="card" aria-live="polite">
-      <p class="empty-state">正在加载获授权的风险提醒…</p>
-    </section>
+    <div v-if="loading" class="plain-list" aria-label="正在加载" aria-live="polite">
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
 
     <div v-else class="plain-list">
       <EmptyState

@@ -4,6 +4,7 @@ import { onMounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import PrivacyBadge from '@/components/PrivacyBadge.vue'
+import SkeletonCard from '@/components/SkeletonCard.vue'
 import { activeProvider } from '@/data'
 import { memberRoleLabel } from '@/data/labels'
 import type { MemberSummary } from '@/data/types'
@@ -34,9 +35,11 @@ onMounted(async () => {
     </header>
 
     <p v-if="error" class="notice" data-tone="error" role="alert">{{ error }}</p>
-    <section v-if="loading" class="card" aria-live="polite">
-      <p class="empty-state">正在加载获授权的成员…</p>
-    </section>
+    <div v-if="loading" class="plain-list" aria-label="正在加载" aria-live="polite">
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
 
     <div v-else class="plain-list">
       <EmptyState

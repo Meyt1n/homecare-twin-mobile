@@ -6,13 +6,17 @@ import EmptyState from '@/components/EmptyState.vue'
 import LevelTag from '@/components/LevelTag.vue'
 import PrivacyBadge from '@/components/PrivacyBadge.vue'
 import ProgressRing from '@/components/ProgressRing.vue'
+import SkeletonCard from '@/components/SkeletonCard.vue'
 import TaskCard from '@/components/TaskCard.vue'
+import { useCountUp } from '@/composables/useCountUp'
 import { createSpeaker, useSpeech } from '@/composables/useSpeech'
+import { showToast } from '@/composables/useToast'
 import { activeProvider } from '@/data'
 import { eventStatusLabel, riskLevelLabel, riskLevelTone, taskLevelLabel } from '@/data/labels'
 import type { MemberSummary, TaskAction, TaskActionPayload, TodaySnapshot } from '@/data/types'
 import { useA11y } from '@/stores/accessibility'
 import { useSession } from '@/stores/session'
+import { tapFeedback } from '@/utils/haptics'
 import { formatDateTime, greetingByHour } from '@/utils/format'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
@@ -26,7 +30,6 @@ const members = ref<MemberSummary[]>([])
 const snapshot = ref<TodaySnapshot | null>(null)
 const loading = ref(true)
 const error = ref('')
-const actionMessage = ref('')
 const actionError = ref('')
 const busyTaskId = ref('')
 const announced = ref(false)
@@ -35,6 +38,13 @@ const greeting = computed(() => greetingByHour(new Date().getHours()))
 const dateLine = computed(() => {
   const now = new Date()
   return `${now.getMonth() + 1}月${now.getDate()}日 星期${WEEKDAYS[now.getDay()]}`
+})
+const daypart = computed(() => {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 10) return 'morning'
+  if (hour >= 10 && hour < 16) return 'day'
+  if (hour >= 16 && hour < 19) return 'evening'
+  return 'night'
 })
 const currentMember = computed(() => members.value.find(m => m.id === session.currentMemberId) ?? null)
 
@@ -45,6 +55,10 @@ const doneTasks = computed(
   () => snapshot.value?.tasks.filter(t => t.status !== 'PENDING' && t.status !== 'DEFERRED') ?? [],
 )
 const topRisks = computed(() => (snapshot.value?.risks ?? []).slice(0, 3))
+
+const pendingCount = useCountUp(() => pendingTasks.value.length)
+const riskCount = useCountUp(() => snapshot.value?.risks.length ?? 0)
+const recentCount = useCountUp(() => snapshot.value?.recentEvents.length ?? 0)
 
 function summaryText(): string {
   if (!snapshot.value) return ''
@@ -99,7 +113,6 @@ async function onMemberChange(): Promise<void> {
   updateSession({ currentMemberId: session.currentMemberId })
   loading.value = true
   error.value = ''
-  actionMessage.value = ''
   actionError.value = ''
   try {
     await loadSnapshot()
@@ -112,13 +125,13 @@ async function onMemberChange(): Promise<void> {
 
 async function onTaskAction(taskId: string, action: TaskAction, payload: TaskActionPayload): Promise<void> {
   busyTaskId.value = taskId
-  actionMessage.value = ''
   actionError.value = ''
   try {
     const task = await activeProvider().submitTaskAction(taskId, action, payload)
     const label = action === 'confirm' ? '已确认' : action === 'defer' ? '已延期' : '已记录跳过'
-    actionMessage.value = `${label}：${task.title}`
-    speech.speak(actionMessage.value)
+    tapFeedback(action === 'confirm' ? [12, 60, 18] : 12)
+    showToast(`${label}：${task.title}`, 'success')
+    speech.speak(`${label}：${task.title}`)
     await loadSnapshot()
   } catch (cause) {
     actionError.value = cause instanceof Error ? cause.message : '操作失败，请稍后重试'
@@ -144,7 +157,7 @@ onMounted(reload)
 
 <template>
   <main id="main" class="screen">
-    <section class="hero" aria-label="今日概览">
+    <section class="hero" :data-daypart="daypart" aria-label="今日概览">
       <div class="hero-top">
         <div class="hero-text">
           <p class="hero-eyebrow">家健镜 · 随身照护</p>
@@ -155,15 +168,15 @@ onMounted(reload)
       </div>
       <div class="hero-stats">
         <div class="hero-stat">
-          <strong>{{ pendingTasks.length }}</strong>
+          <strong>{{ pendingCount }}</strong>
           <span>待处理任务</span>
         </div>
         <div class="hero-stat">
-          <strong>{{ snapshot?.risks.length ?? 0 }}</strong>
+          <strong>{{ riskCount }}</strong>
           <span>待关注风险</span>
         </div>
         <div class="hero-stat">
-          <strong>{{ snapshot?.recentEvents.length ?? 0 }}</strong>
+          <strong>{{ recentCount }}</strong>
           <span>最近变化</span>
         </div>
       </div>
@@ -186,11 +199,12 @@ onMounted(reload)
 
     <p v-if="error" class="notice" data-tone="error" role="alert">{{ error }}</p>
     <p v-if="actionError" class="notice" data-tone="error" role="alert">{{ actionError }}</p>
-    <p v-else-if="actionMessage" class="notice" data-tone="success" role="status">{{ actionMessage }}</p>
 
-    <section v-if="loading" class="card" aria-live="polite">
-      <p class="empty-state">正在加载获授权的照护数据…</p>
-    </section>
+    <div v-if="loading" class="plain-list" aria-label="正在加载" aria-live="polite">
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard :disc="false" />
+    </div>
 
     <template v-else-if="snapshot">
       <section aria-labelledby="tasks-title">
@@ -266,11 +280,15 @@ onMounted(reload)
         <div class="section-heading">
           <h2 id="recent-title">最近变化</h2>
         </div>
-        <ul class="card divided-list" style="margin-top: 10px">
+        <ul class="card divided-list event-timeline" style="margin-top: 10px">
           <li v-if="snapshot.recentEvents.length === 0">
             <span class="meta-line">尚无已确认健康事件，可拍摄药盒或在网页端手工录入一条事实。</span>
           </li>
-          <li v-for="event in snapshot.recentEvents" :key="event.id">
+          <li
+            v-for="event in snapshot.recentEvents"
+            :key="event.id"
+            :data-unconfirmed="event.confirmationStatus !== 'CONFIRMED'"
+          >
             <strong>{{ event.title }}</strong>
             <span class="meta-line">
               {{ eventStatusLabel(event.confirmationStatus) }} · {{ formatDateTime(event.occurredAt) }}

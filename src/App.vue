@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppTabBar from '@/components/AppTabBar.vue'
+import ToastHost from '@/components/ToastHost.vue'
 </script>
 
 <template>
@@ -27,5 +28,6 @@ import AppTabBar from '@/components/AppTabBar.vue'
       <component :is="Component" />
     </Transition>
   </RouterView>
+  <ToastHost />
   <AppTabBar />
 </template>

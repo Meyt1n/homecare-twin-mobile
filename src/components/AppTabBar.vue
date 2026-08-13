@@ -107,6 +107,14 @@ function isActive(tab: TabItem): boolean {
   background: var(--grad-btn);
   box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
+.tabbar-item[data-active='true'] svg {
+  animation: tab-pop 0.4s var(--ease-spring);
+}
+@keyframes tab-pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
 
 html[data-contrast='high'] .tabbar {
   background: #fff;

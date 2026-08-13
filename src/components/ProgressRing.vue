@@ -21,12 +21,14 @@ const ratio = computed(() => {
   return Math.min(1, Math.max(0, props.done / props.total))
 })
 const dashOffset = computed(() => circumference.value * (1 - ratio.value))
+const complete = computed(() => props.total > 0 && props.done >= props.total)
 const label = computed(() => (props.total > 0 ? `${props.done}/${props.total}` : '0'))
 </script>
 
 <template>
   <div
     class="ring"
+    :data-complete="complete"
     role="img"
     :aria-label="total > 0 ? `今日任务已完成 ${done} 项，共 ${total} 项` : '今日暂无任务'"
   >
@@ -35,6 +37,10 @@ const label = computed(() => (props.total > 0 ? `${props.done}/${props.total}` :
         <linearGradient id="hct-ring-grad" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="#ffe6bd" />
           <stop offset="1" stop-color="#f2a355" />
+        </linearGradient>
+        <linearGradient id="hct-ring-grad-gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#ffe9a8" />
+          <stop offset="1" stop-color="#ffb14e" />
         </linearGradient>
       </defs>
       <circle
@@ -60,7 +66,7 @@ const label = computed(() => (props.total > 0 ? `${props.done}/${props.total}` :
     </svg>
     <div class="ring-center">
       <strong>{{ label }}</strong>
-      <span>{{ total > 0 ? '已完成' : '无任务' }}</span>
+      <span>{{ complete ? '全部完成' : total > 0 ? '已完成' : '无任务' }}</span>
     </div>
   </div>
 </template>
@@ -73,7 +79,18 @@ const label = computed(() => (props.total > 0 ? `${props.done}/${props.total}` :
   stroke: url(#hct-ring-grad);
   transition: stroke-dashoffset 0.8s var(--ease);
 }
-html[data-contrast='high'] .ring svg { filter: none; }
+
+/* 全部完成：金色描边 + 光晕呼吸 */
+.ring[data-complete='true'] svg {
+  animation: ring-glow 2.2s ease-in-out infinite alternate;
+}
+.ring[data-complete='true'] .ring-value { stroke: url(#hct-ring-grad-gold); }
+@keyframes ring-glow {
+  from { filter: drop-shadow(0 0 6px rgba(255, 209, 130, 0.5)); }
+  to { filter: drop-shadow(0 0 14px rgba(255, 209, 130, 0.9)); }
+}
+
+html[data-contrast='high'] .ring svg { filter: none; animation: none; }
 html[data-contrast='high'] .ring-value { stroke: #ffd9a8; }
 .ring-center {
   position: absolute;

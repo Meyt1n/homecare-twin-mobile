@@ -857,6 +857,43 @@ html[data-contrast='high'] .avatar { box-shadow: none; border: 2px solid #000; b
 html[data-contrast='high'] .steps li { background: #fff; border: 2px solid #3a453f; box-shadow: none; }
 html[data-contrast='high'] .steps li[data-active='true'] { background: var(--c-brand); border-color: #000; }
 
+/* ---- 事件时间线（左侧竖线 + 节点圆点） ---- */
+
+.event-timeline > li {
+  position: relative;
+  border-top: 0;
+  padding: 10px 0 10px 24px;
+}
+.event-timeline > li::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--divider);
+}
+.event-timeline > li:first-child::before { top: 16px; }
+.event-timeline > li:last-child::before { bottom: auto; height: 16px; }
+.event-timeline > li::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 15px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c-brand);
+  box-shadow: 0 0 0 3px var(--c-brand-soft);
+}
+.event-timeline > li[data-unconfirmed='true']::after {
+  background: var(--c-surface-solid);
+  border: 2.5px solid var(--c-warn);
+  box-shadow: 0 0 0 3px var(--c-warn-soft);
+}
+html[data-contrast='high'] .event-timeline > li::before { background: #000; }
+html[data-contrast='high'] .event-timeline > li::after { box-shadow: none; border: 2px solid #000; }
+
 /* ---- SOS 脉冲（紧急按钮光圈） ---- */
 
 @keyframes sos-pulse {
@@ -906,6 +943,23 @@ html[data-contrast='high'] .steps li[data-active='true'] { background: var(--c-b
   to { transform: scale(1.18); opacity: 1; }
 }
 .hero > * { position: relative; z-index: 1; }
+
+/* 英雄卡按时段变换氛围（仅浅色主题；深色统一森林夜，高对比纯色） */
+html[data-theme='light'] .hero[data-daypart='morning'] {
+  --grad-brand:
+    radial-gradient(120% 140% at 85% -20%, rgba(255, 226, 158, 0.5) 0%, transparent 55%),
+    linear-gradient(135deg, #58936f 0%, #35755f 52%, #23584a 100%);
+}
+html[data-theme='light'] .hero[data-daypart='evening'] {
+  --grad-brand:
+    radial-gradient(130% 130% at 90% -10%, rgba(255, 176, 110, 0.45) 0%, transparent 58%),
+    linear-gradient(135deg, #3e7f66 0%, #2f6d5a 45%, #6d5a33 100%);
+}
+html[data-theme='light'] .hero[data-daypart='night'] {
+  --grad-brand:
+    radial-gradient(120% 140% at 80% -20%, rgba(154, 200, 255, 0.2) 0%, transparent 55%),
+    linear-gradient(135deg, #2e5f57 0%, #1f4a48 50%, #17303c 100%);
+}
 .hero .hero-eyebrow {
   font-size: 0.76rem;
   font-weight: 800;

@@ -108,8 +108,12 @@ onMounted(async () => {
             icon="clock"
             title="暂无可见的健康事件"
           />
-          <ul v-else class="divided-list">
-            <li v-for="event in detail.timeline" :key="event.id">
+          <ul v-else class="divided-list event-timeline">
+            <li
+              v-for="event in detail.timeline"
+              :key="event.id"
+              :data-unconfirmed="event.confirmationStatus !== 'CONFIRMED'"
+            >
               <strong>{{ event.title }}</strong>
               <span class="meta-line">
                 {{ eventStatusLabel(event.confirmationStatus) }} · {{ formatDateTime(event.occurredAt) }} · 来源
