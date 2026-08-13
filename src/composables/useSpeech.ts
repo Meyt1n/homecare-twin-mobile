@@ -1,3 +1,5 @@
+import { readonly, ref } from 'vue'
+
 import { useA11y } from '@/stores/accessibility'
 
 export interface SpeechLike {
@@ -10,6 +12,13 @@ export interface Speaker {
   speak(text: string): boolean
   stop(): void
   supported: boolean
+}
+
+/** 当前正在播报的文本（空串表示未在播报），供全局指示条使用。 */
+const speakingText = ref('')
+
+export function useSpeakingIndicator() {
+  return readonly(speakingText)
 }
 
 function resolveSynth(): SpeechLike | null {
@@ -30,11 +39,17 @@ export function createSpeaker(
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'zh-CN'
       utterance.rate = 0.95
+      utterance.onend = () => {
+        if (speakingText.value === text) speakingText.value = ''
+      }
+      utterance.onerror = utterance.onend
+      speakingText.value = text
       synth.speak(utterance)
       return true
     },
     stop(): void {
       synth?.cancel()
+      speakingText.value = ''
     },
   }
 }

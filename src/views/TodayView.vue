@@ -11,6 +11,7 @@ import SkeletonCard from '@/components/SkeletonCard.vue'
 import TaskCard from '@/components/TaskCard.vue'
 import TrendChart from '@/components/TrendChart.vue'
 import { useCountUp } from '@/composables/useCountUp'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { createSpeaker, useSpeech } from '@/composables/useSpeech'
 import { showToast } from '@/composables/useToast'
 import { activeProvider } from '@/data'
@@ -171,11 +172,27 @@ watch(
   },
 )
 
+const { pull, refreshing, triggerThreshold } = usePullToRefresh(async () => {
+  tapFeedback(10)
+  await reload()
+  showToast('已刷新', 'info', 1400)
+})
+
 onMounted(reload)
 </script>
 
 <template>
   <main id="main" class="screen">
+    <div
+      v-if="pull > 0 || refreshing"
+      class="pull-indicator"
+      :style="{ height: `${refreshing ? triggerThreshold : pull}px` }"
+      aria-live="polite"
+    >
+      <AppIcon name="refresh" :size="18" :class="{ 'pull-spin': refreshing }" />
+      {{ refreshing ? '正在刷新…' : pull >= triggerThreshold ? '松开刷新' : '下拉刷新' }}
+    </div>
+
     <section class="hero" :data-daypart="daypart" aria-label="今日概览">
       <div class="hero-top">
         <div class="hero-text">
@@ -336,6 +353,23 @@ onMounted(reload)
 </template>
 
 <style scoped>
+.pull-indicator {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  padding-bottom: 6px;
+  overflow: hidden;
+  color: var(--c-ink-faint);
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin: -12px 0 -6px;
+}
+.pull-spin { animation: pull-rotate 0.9s linear infinite; }
+@keyframes pull-rotate {
+  to { transform: rotate(360deg); }
+}
+
 .hero-top {
   display: flex;
   align-items: center;
