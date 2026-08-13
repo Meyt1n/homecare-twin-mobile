@@ -169,15 +169,15 @@ onMounted(reload)
       <div class="hero-stats">
         <div class="hero-stat">
           <strong>{{ pendingCount }}</strong>
-          <span>待处理任务</span>
+          <span><AppIcon name="pill" :size="13" /> 待处理任务</span>
         </div>
         <div class="hero-stat">
           <strong>{{ riskCount }}</strong>
-          <span>待关注风险</span>
+          <span><AppIcon name="alert" :size="13" /> 待关注风险</span>
         </div>
         <div class="hero-stat">
           <strong>{{ recentCount }}</strong>
-          <span>最近变化</span>
+          <span><AppIcon name="clock" :size="13" /> 最近变化</span>
         </div>
       </div>
       <button type="button" class="btn btn-ghost" @click="speakSummary">
@@ -209,7 +209,7 @@ onMounted(reload)
     <template v-else-if="snapshot">
       <section aria-labelledby="tasks-title">
         <div class="section-heading">
-          <h2 id="tasks-title">今日照护任务</h2>
+          <h2 id="tasks-title"><span class="heading-dot" aria-hidden="true"></span>今日照护任务</h2>
           <span class="meta-line">{{ pendingTasks.length }} 项待处理</span>
         </div>
         <div class="plain-list" style="margin-top: 10px">
@@ -243,7 +243,7 @@ onMounted(reload)
 
       <section aria-labelledby="risks-title">
         <div class="section-heading">
-          <h2 id="risks-title">待关注风险</h2>
+          <h2 id="risks-title"><span class="heading-dot" data-tone="warn" aria-hidden="true"></span>待关注风险</h2>
           <RouterLink class="section-link" to="/alerts">查看全部</RouterLink>
         </div>
         <div class="plain-list" style="margin-top: 10px">
@@ -278,7 +278,7 @@ onMounted(reload)
 
       <section aria-labelledby="recent-title">
         <div class="section-heading">
-          <h2 id="recent-title">最近变化</h2>
+          <h2 id="recent-title"><span class="heading-dot" data-tone="info" aria-hidden="true"></span>最近变化</h2>
         </div>
         <ul class="card divided-list event-timeline" style="margin-top: 10px">
           <li v-if="snapshot.recentEvents.length === 0">

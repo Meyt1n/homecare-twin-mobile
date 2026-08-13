@@ -72,24 +72,33 @@ onMounted(async () => {
             title="暂无已确认的用药记录"
           />
           <ul v-else class="divided-list">
-            <li v-for="med in detail.medications" :key="med.name">
-              <div class="card-title-row">
-                <strong>{{ med.name }}</strong>
-                <span v-if="med.expired" class="tag" data-tone="danger">已过期</span>
-                <span
-                  v-else-if="med.stockDaysLeft !== null && med.stockDaysLeft <= 5"
-                  class="tag"
-                  data-tone="warn"
-                >
-                  库存不足
+            <li v-for="med in detail.medications" :key="med.name" class="med-row">
+              <span
+                class="icon-disc med-disc"
+                :data-tone="med.expired ? 'danger' : med.stockDaysLeft !== null && med.stockDaysLeft <= 5 ? 'warn' : 'calm'"
+                aria-hidden="true"
+              >
+                <AppIcon name="pill" :size="19" />
+              </span>
+              <div class="med-body">
+                <div class="card-title-row">
+                  <strong>{{ med.name }}</strong>
+                  <span v-if="med.expired" class="tag" data-tone="danger">已过期</span>
+                  <span
+                    v-else-if="med.stockDaysLeft !== null && med.stockDaysLeft <= 5"
+                    class="tag"
+                    data-tone="warn"
+                  >
+                    库存不足
+                  </span>
+                </div>
+                <span class="meta-line">{{ med.spec }} · {{ med.schedule }}</span>
+                <span class="meta-line">
+                  <template v-if="med.stockDaysLeft !== null">剩余约 {{ med.stockDaysLeft }} 天用量 · </template>
+                  <template v-if="med.expiryDate">有效期至 {{ formatDay(med.expiryDate) }} · </template>
+                  {{ med.confirmed ? '已人工确认' : '待确认' }}
                 </span>
               </div>
-              <span class="meta-line">{{ med.spec }} · {{ med.schedule }}</span>
-              <span class="meta-line">
-                <template v-if="med.stockDaysLeft !== null">剩余约 {{ med.stockDaysLeft }} 天用量 · </template>
-                <template v-if="med.expiryDate">有效期至 {{ formatDay(med.expiryDate) }} · </template>
-                {{ med.confirmed ? '已人工确认' : '待确认' }}
-              </span>
             </li>
           </ul>
         </div>
@@ -150,4 +159,7 @@ onMounted(async () => {
 .back-btn { justify-self: start; }
 .member-row { display: flex; align-items: center; gap: 12px; }
 .member-info { flex: 1; display: grid; gap: 4px; min-width: 0; }
+.med-row { display: flex; gap: 12px; align-items: flex-start; }
+.med-disc { width: 40px; height: 40px; }
+.med-body { flex: 1; min-width: 0; display: grid; gap: 4px; }
 </style>

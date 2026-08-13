@@ -34,6 +34,26 @@ const filtered = computed(() =>
 
 const severeCount = computed(() => risks.value.filter(r => r.level === 'SEVERE' && !r.acknowledged).length)
 
+/** 等级分布：用于顶部彩色比例条与图例。 */
+const distribution = computed(() => {
+  const buckets = [
+    { level: 'SEVERE', label: '严重', tone: 'danger' },
+    { level: 'WARNING', label: '较高', tone: 'warn' },
+    { level: 'INFO', label: '一般', tone: 'info' },
+    { level: 'TIP', label: '提示', tone: 'calm' },
+  ] as const
+  return buckets
+    .map(bucket => ({
+      ...bucket,
+      count: risks.value.filter(r => r.level === bucket.level).length,
+    }))
+    .filter(bucket => bucket.count > 0)
+})
+
+const distributionLabel = computed(() =>
+  distribution.value.map(b => `${b.label} ${b.count} 条`).join('，'),
+)
+
 async function reload(): Promise<void> {
   loading.value = true
   error.value = ''
@@ -94,6 +114,22 @@ onMounted(reload)
       >
         {{ filter.label }}
       </button>
+    </div>
+
+    <div v-if="!loading && distribution.length > 0" class="card distribution-card">
+      <div class="level-bar" role="img" :aria-label="`风险等级分布：${distributionLabel}`">
+        <span
+          v-for="bucket in distribution"
+          :key="bucket.level"
+          :data-tone="bucket.tone"
+          :style="{ flexGrow: bucket.count }"
+        ></span>
+      </div>
+      <p class="meta-line">
+        <template v-for="bucket in distribution" :key="bucket.level">
+          {{ bucket.label }} {{ bucket.count }} 条&nbsp;&nbsp;
+        </template>
+      </p>
     </div>
 
     <p v-if="severeCount > 0" class="notice" data-tone="error" role="alert">
@@ -174,4 +210,5 @@ html[data-contrast='high'] .filter-chip[aria-pressed='true'] { background: var(-
 .risk-row { display: flex; align-items: center; gap: 12px; }
 .risk-body { flex: 1; min-width: 0; display: grid; gap: 6px; }
 .risk-message { font-weight: 700; line-height: 1.4; }
+.distribution-card { gap: 9px; padding: 14px 16px; }
 </style>

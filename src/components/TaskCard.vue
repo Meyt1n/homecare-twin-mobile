@@ -46,7 +46,7 @@ function submitSkip(): void {
 </script>
 
 <template>
-  <article class="card task-card">
+  <article class="card task-card" :data-tone="taskLevelTone(props.task.level)">
     <div class="task-head">
       <span class="icon-disc" :data-tone="taskLevelTone(props.task.level)" aria-hidden="true">
         <AppIcon name="pill" :size="22" />
@@ -125,6 +125,24 @@ function submitSkip(): void {
 </template>
 
 <style scoped>
+.task-card { position: relative; overflow: hidden; }
+/* 左缘等级色条：与图标盘同色，强化等级识别（配合文字标签，不只靠颜色） */
+.task-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 16px;
+  bottom: 16px;
+  width: 4.5px;
+  border-radius: 0 5px 5px 0;
+  background: var(--edge, var(--c-info));
+}
+.task-card[data-tone='danger']::before { --edge: var(--c-danger); }
+.task-card[data-tone='warn']::before { --edge: var(--c-warn); }
+.task-card[data-tone='info']::before { --edge: var(--c-info); }
+.task-card[data-tone='neutral']::before { --edge: var(--c-line-strong); }
+html[data-contrast='high'] .task-card::before { background: #000; }
+
 .task-head { display: flex; gap: 12px; align-items: flex-start; }
 .task-title { flex: 1; min-width: 0; display: grid; gap: 4px; }
 .task-tags { display: grid; gap: 5px; justify-items: end; }

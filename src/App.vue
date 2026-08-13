@@ -6,8 +6,10 @@ import ToastHost from '@/components/ToastHost.vue'
 <template>
   <a class="skip-link" href="#main">跳到主要内容</a>
 
-  <!-- 氛围背景：柔光色斑 + 线条装饰，纯装饰层，高对比模式自动隐藏 -->
+  <!-- 氛围背景：AI 生成水彩底图 + 柔光色斑 + 线条装饰，纯装饰层，高对比模式自动隐藏 -->
   <div class="bg-scene" aria-hidden="true">
+    <img class="bg-art bg-art--light" src="/bg/ambient-light.jpg" alt="" loading="eager" decoding="async" />
+    <img class="bg-art bg-art--dark" src="/bg/ambient-dark.jpg" alt="" loading="eager" decoding="async" />
     <span class="blob blob-a"></span>
     <span class="blob blob-b"></span>
     <span class="blob blob-c"></span>

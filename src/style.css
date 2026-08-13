@@ -242,6 +242,26 @@ html[data-motion='reduced'] *::after {
   pointer-events: none;
 }
 
+/* AI 生成的水彩氛围底图：随主题切换，缓慢 Ken Burns 呼吸 */
+.bg-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  animation: kenburns 70s ease-in-out infinite alternate;
+  will-change: transform;
+}
+html[data-theme='light'] .bg-art--light { opacity: 0.62; }
+html[data-theme='dark'] .bg-art--dark { opacity: 0.85; }
+
+@keyframes kenburns {
+  from { transform: scale(1) translateY(0); }
+  to { transform: scale(1.08) translateY(-1.5%); }
+}
+
 .blob {
   position: absolute;
   border-radius: 50%;
@@ -857,6 +877,45 @@ html[data-contrast='high'] .avatar { box-shadow: none; border: 2px solid #000; b
 html[data-contrast='high'] .steps li { background: #fff; border: 2px solid #3a453f; box-shadow: none; }
 html[data-contrast='high'] .steps li[data-active='true'] { background: var(--c-brand); border-color: #000; }
 
+/* ---- 分区标题彩点 ---- */
+
+.heading-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--hd-bg, var(--c-brand));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hd-bg, var(--c-brand)) 20%, transparent);
+  margin-right: 8px;
+  display: inline-block;
+}
+.heading-dot[data-tone='warn'] { --hd-bg: var(--c-warn); }
+.heading-dot[data-tone='info'] { --hd-bg: var(--c-info); }
+.heading-dot[data-tone='danger'] { --hd-bg: var(--c-danger); }
+.heading-dot[data-tone='accent'] { --hd-bg: var(--c-accent); }
+
+/* ---- 风险等级分布条 ---- */
+
+.level-bar {
+  display: flex;
+  gap: 3px;
+  height: 12px;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.level-bar span {
+  min-width: 12px;
+  border-radius: 4px;
+  background: var(--lb-bg, var(--c-info));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: flex-grow 0.5s var(--ease);
+}
+.level-bar span[data-tone='danger'] { --lb-bg: var(--c-danger); }
+.level-bar span[data-tone='warn'] { --lb-bg: var(--c-warn); }
+.level-bar span[data-tone='info'] { --lb-bg: var(--c-info); }
+.level-bar span[data-tone='calm'] { --lb-bg: var(--c-calm); }
+html[data-contrast='high'] .level-bar span { box-shadow: none; outline: 1px solid #000; }
+
 /* ---- 事件时间线（左侧竖线 + 节点圆点） ---- */
 
 .event-timeline > li {
@@ -990,7 +1049,14 @@ html[data-contrast='high'] .hero .hero-eyebrow { color: #fff; }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 .hero-stat strong { font-size: 1.25rem; font-weight: 800; line-height: 1.2; }
-.hero-stat span { font-size: 0.74rem; color: rgba(255, 255, 255, 0.85); font-weight: 600; }
+.hero-stat span {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 html[data-contrast='high'] .hero-stat { background: #fff; box-shadow: none; }
 html[data-contrast='high'] .hero-stat strong,
 html[data-contrast='high'] .hero-stat span { color: var(--c-brand-deep); }
