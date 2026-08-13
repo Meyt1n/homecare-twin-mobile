@@ -65,7 +65,10 @@ onMounted(async () => {
             <template v-else>
               <p class="meta-line">可见：{{ member.visibleScope.fields.join('、') }}</p>
               <p class="meta-line">
-                用途：{{ member.visibleScope.purpose }} · 授权至 {{ formatDay(member.visibleScope.validUntil) }}
+                用途：{{ member.visibleScope.purpose }}
+                <template v-if="member.visibleScope.validUntil">
+                  · 授权至 {{ formatDay(member.visibleScope.validUntil) }}
+                </template>
               </p>
             </template>
             <p class="meta-line">

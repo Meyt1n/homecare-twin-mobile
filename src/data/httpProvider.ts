@@ -16,6 +16,7 @@ import type {
   TaskLevel,
   TimelineItem,
   TodaySnapshot,
+  TrendPoint,
 } from './types'
 
 /**
@@ -132,6 +133,41 @@ export function deriveTasksFromEvents(
   })
 }
 
+const TREND_WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
+
+function eventTime(event: HealthEvent): number {
+  const time = Date.parse(event.occurred_at ?? event.created_at)
+  return Number.isFinite(time) ? time : 0
+}
+
+/**
+ * 从时间线事件推导近 7 天完成趋势：
+ * 某天的 total = 截至当天结束已存在的计划事实数；
+ * done = 当天发生的 plan_confirmed 动作数（服务端按计划幂等）。
+ */
+export function deriveWeeklyTrendFromEvents(events: HealthEvent[], now: Date = new Date()): TrendPoint[] {
+  const plans = events.filter(e => PLAN_FACT_TYPES.has(e.event_type))
+  const confirms = events.filter(e => e.event_type === 'plan_confirmed')
+
+  const points: TrendPoint[] = []
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const dayStart = new Date(now)
+    dayStart.setDate(dayStart.getDate() - offset)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = dayStart.getTime() + 24 * 3600 * 1000
+
+    points.push({
+      label: offset === 0 ? '今' : TREND_WEEKDAYS[dayStart.getDay()]!,
+      total: plans.filter(p => eventTime(p) < dayEnd).length,
+      done: confirms.filter(c => {
+        const time = eventTime(c)
+        return time >= dayStart.getTime() && time < dayEnd
+      }).length,
+    })
+  }
+  return points
+}
+
 function toMedication(event: HealthEvent): MedicationItem {
   const payload = event.payload ?? {}
   const expiry = textOf(payload['expiry_date'])
@@ -200,6 +236,16 @@ export class HttpDataProvider implements DataProvider {
     const members = await this.client.listMembers(householdId, this.options())
     this.memberCache = new Map(members.map(m => [m.id, m]))
 
+    // 家庭 owner 可读授权列表；非 owner（照护者）返回 404，
+    // 此时成员列表已被服务端过滤到授权范围，如实标注而不是显示“完整视角”。
+    let isOwner = true
+    try {
+      await this.client.listAuthorizations(householdId, this.options())
+    } catch {
+      isOwner = false
+    }
+    const { accessPurpose } = this.context()
+
     const summaries: MemberSummary[] = []
     for (const member of members) {
       let severe = 0
@@ -226,7 +272,13 @@ export class HttpDataProvider implements DataProvider {
         relation: member.role === 'SELF' ? '本人' : '家庭成员',
         role: member.role,
         avatarText: member.display_name.slice(0, 1),
-        visibleScope: 'FULL',
+        visibleScope: isOwner
+          ? 'FULL'
+          : {
+              fields: ['已确认健康事件（服务端已过滤）'],
+              purpose: accessPurpose || 'family-care',
+              validUntil: '',
+            },
         pendingTaskCount: pending,
         severeRiskCount: severe,
         warningRiskCount: warning,
@@ -368,6 +420,12 @@ export class HttpDataProvider implements DataProvider {
     }
     task.lastActionAt = new Date().toISOString()
     return { ...task }
+  }
+
+  async getWeeklyTrend(memberId: string): Promise<TrendPoint[]> {
+    const householdId = await this.resolveHouseholdId()
+    const events = await this.client.listMemberTimeline(householdId, memberId, this.options())
+    return deriveWeeklyTrendFromEvents(events)
   }
 
   async checkImageQuality(file: File): Promise<QualityCheckResult> {

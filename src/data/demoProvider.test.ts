@@ -80,4 +80,16 @@ describe('演示数据 provider', () => {
     const detail = await demoProvider.getMemberDetail('m-li')
     expect(detail.medications).toBe('UNAUTHORIZED')
   })
+
+  it('近 7 天趋势返回 7 项，今天与任务状态联动', async () => {
+    const before = await demoProvider.getWeeklyTrend('m-wang')
+    expect(before).toHaveLength(7)
+    expect(before[6]!.label).toBe('今')
+    expect(before[6]!.done).toBe(0)
+    expect(before[6]!.total).toBe(3)
+
+    await demoProvider.submitTaskAction('t-am-med', 'confirm')
+    const after = await demoProvider.getWeeklyTrend('m-wang')
+    expect(after[6]!.done).toBe(1)
+  })
 })

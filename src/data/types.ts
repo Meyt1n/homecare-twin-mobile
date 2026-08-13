@@ -141,6 +141,14 @@ export interface TodaySnapshot {
   recentEvents: TimelineItem[]
 }
 
+/** 近 7 天任务完成趋势中的一天。 */
+export interface TrendPoint {
+  /** 显示标签，如“一/二/…/今” */
+  label: string
+  done: number
+  total: number
+}
+
 export interface ProviderInfo {
   mode: 'demo' | 'live'
   label: string
@@ -159,4 +167,6 @@ export interface DataProvider {
   submitTaskAction(taskId: string, action: TaskAction, payload?: TaskActionPayload): Promise<CareTask>
   checkImageQuality(file: File): Promise<QualityCheckResult>
   recognizeMedicine(file: File, memberId: string): Promise<RecognitionCandidate>
+  /** 近 7 天任务完成趋势（含今天，共 7 项，时间升序）。 */
+  getWeeklyTrend(memberId: string): Promise<TrendPoint[]>
 }

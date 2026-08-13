@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { HealthEvent } from '@/api/types'
 
-import { deriveTasksFromEvents } from './httpProvider'
+import { deriveTasksFromEvents, deriveWeeklyTrendFromEvents } from './httpProvider'
 
 let sequence = 0
 
@@ -101,5 +101,52 @@ describe('联机模式任务推导（与主仓库事件语义对齐）', () => {
       makeEvent({ id: 'e2', event_type: 'allergy_added', payload: { allergy: '青霉素' } }),
     ]
     expect(deriveTasksFromEvents(events, 'm1', '王秀兰')).toHaveLength(0)
+  })
+})
+
+describe('近 7 天完成趋势推导', () => {
+  const now = new Date('2026-08-13T12:00:00Z')
+
+  it('返回按时间升序的 7 天，最后一天标记为“今”', () => {
+    const points = deriveWeeklyTrendFromEvents([], now)
+    expect(points).toHaveLength(7)
+    expect(points[6]!.label).toBe('今')
+    expect(points.every(p => p.total === 0 && p.done === 0)).toBe(true)
+  })
+
+  it('total 为截至当天已存在的计划数，done 为当天确认数', () => {
+    const events = [
+      makeEvent({
+        id: 'p1',
+        event_type: 'plan_created',
+        payload: { drug: 'A药' },
+        occurred_at: '2026-08-10T01:00:00Z',
+      }),
+      makeEvent({
+        id: 'a1',
+        event_type: 'plan_confirmed',
+        payload: { plan_event_id: 'p1' },
+        occurred_at: '2026-08-11T02:00:00Z',
+      }),
+      makeEvent({
+        id: 'a2',
+        event_type: 'plan_confirmed',
+        payload: { plan_event_id: 'p1' },
+        occurred_at: '2026-08-13T03:00:00Z',
+      }),
+    ]
+    const points = deriveWeeklyTrendFromEvents(events, now)
+
+    // 8-07 至 8-09：计划尚未创建
+    expect(points[0]!.total).toBe(0)
+    expect(points[2]!.total).toBe(0)
+    // 8-10 起计划存在
+    expect(points[3]!.total).toBe(1)
+    expect(points[6]!.total).toBe(1)
+    // 8-11 与今天各有一次确认
+    expect(points[4]!.done).toBe(1)
+    expect(points[6]!.done).toBe(1)
+    // 8-12 无确认
+    expect(points[5]!.done).toBe(0)
   })
 })

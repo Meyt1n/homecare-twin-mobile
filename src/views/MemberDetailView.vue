@@ -51,8 +51,10 @@ onMounted(async () => {
             </p>
             <p v-if="detail.summary.visibleScope === 'FULL'" class="meta-line">完整视角（本人或家庭管理员）</p>
             <p v-else class="meta-line">
-              可见范围：{{ detail.summary.visibleScope.fields.join('、') }} · 授权至
-              {{ formatDay(detail.summary.visibleScope.validUntil) }}
+              可见范围：{{ detail.summary.visibleScope.fields.join('、') }}
+              <template v-if="detail.summary.visibleScope.validUntil">
+                · 授权至 {{ formatDay(detail.summary.visibleScope.validUntil) }}
+              </template>
             </p>
           </div>
         </div>

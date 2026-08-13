@@ -114,6 +114,11 @@ export class ApiClient {
     return this.request(`/api/v1/households/${householdId}/members/${memberId}/timeline`, undefined, options)
   }
 
+  /** 仅家庭 owner 可读；非 owner 返回 404（用于区分照护者视角）。 */
+  listAuthorizations(householdId: string, options?: RequestOptions): Promise<unknown[]> {
+    return this.request(`/api/v1/households/${householdId}/authorizations`, undefined, options)
+  }
+
   listMemberRisks(householdId: string, memberId: string, options?: RequestOptions): Promise<RiskListResponse> {
     return this.request(`/api/v1/households/${householdId}/members/${memberId}/risks`, undefined, options)
   }

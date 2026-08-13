@@ -14,7 +14,10 @@ import type {
   TaskActionPayload,
   TimelineItem,
   TodaySnapshot,
+  TrendPoint,
 } from './types'
+
+const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
 
 /**
  * 演示模式数据：全部为虚构人物与虚构药品记录，仅用于教学演示体验，
@@ -493,6 +496,31 @@ export const demoProvider: DataProvider = {
       ],
       qualityReceipt: `demo-receipt-${Date.now()}`,
     }
+  },
+
+  async getWeeklyTrend(memberId: string): Promise<TrendPoint[]> {
+    await delay(160)
+    // 前 6 天为稳定的虚构数据（按成员区分），今天与当前任务状态联动。
+    const seed = memberId === 'm-li' ? [1, 1, 1, 0, 1, 1] : [2, 3, 2, 3, 1, 3]
+    const totalSeed = memberId === 'm-li' ? [1, 1, 1, 1, 1, 1] : [3, 3, 3, 3, 3, 3]
+    const points: TrendPoint[] = []
+    for (let offset = 6; offset >= 1; offset -= 1) {
+      const date = new Date()
+      date.setDate(date.getDate() - offset)
+      const index = 6 - offset
+      points.push({
+        label: WEEKDAY_LABELS[date.getDay()]!,
+        done: seed[index] ?? 0,
+        total: totalSeed[index] ?? 0,
+      })
+    }
+    const todayTasks = state.tasks.filter(t => t.memberId === memberId)
+    points.push({
+      label: '今',
+      done: todayTasks.filter(t => t.status === 'CONFIRMED').length,
+      total: todayTasks.length,
+    })
+    return points
   },
 
   async recognizeMedicine(file: File): Promise<RecognitionCandidate> {

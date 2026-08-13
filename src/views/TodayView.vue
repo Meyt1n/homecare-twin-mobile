@@ -2,18 +2,20 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import AppIcon from '@/components/AppIcon.vue'
+import ConfettiBurst from '@/components/ConfettiBurst.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import LevelTag from '@/components/LevelTag.vue'
 import PrivacyBadge from '@/components/PrivacyBadge.vue'
 import ProgressRing from '@/components/ProgressRing.vue'
 import SkeletonCard from '@/components/SkeletonCard.vue'
 import TaskCard from '@/components/TaskCard.vue'
+import TrendChart from '@/components/TrendChart.vue'
 import { useCountUp } from '@/composables/useCountUp'
 import { createSpeaker, useSpeech } from '@/composables/useSpeech'
 import { showToast } from '@/composables/useToast'
 import { activeProvider } from '@/data'
 import { eventStatusLabel, riskLevelLabel, riskLevelTone, taskLevelLabel } from '@/data/labels'
-import type { MemberSummary, TaskAction, TaskActionPayload, TodaySnapshot } from '@/data/types'
+import type { MemberSummary, TaskAction, TaskActionPayload, TodaySnapshot, TrendPoint } from '@/data/types'
 import { useA11y } from '@/stores/accessibility'
 import { useSession } from '@/stores/session'
 import { tapFeedback } from '@/utils/haptics'
@@ -28,11 +30,13 @@ const manualSpeaker = createSpeaker(() => true)
 
 const members = ref<MemberSummary[]>([])
 const snapshot = ref<TodaySnapshot | null>(null)
+const trend = ref<TrendPoint[]>([])
 const loading = ref(true)
 const error = ref('')
 const actionError = ref('')
 const busyTaskId = ref('')
 const announced = ref(false)
+const confetti = ref<InstanceType<typeof ConfettiBurst> | null>(null)
 
 const greeting = computed(() => greetingByHour(new Date().getHours()))
 const dateLine = computed(() => {
@@ -86,9 +90,18 @@ async function loadMembers(): Promise<void> {
 async function loadSnapshot(): Promise<void> {
   if (!session.currentMemberId) {
     snapshot.value = null
+    trend.value = []
     return
   }
   snapshot.value = await activeProvider().getTodaySnapshot(session.currentMemberId)
+  activeProvider()
+    .getWeeklyTrend(session.currentMemberId)
+    .then(points => {
+      trend.value = points
+    })
+    .catch(() => {
+      trend.value = []
+    })
   if (!announced.value && settings.voiceBroadcast) {
     announced.value = true
     speech.speak(summaryText())
@@ -126,6 +139,7 @@ async function onMemberChange(): Promise<void> {
 async function onTaskAction(taskId: string, action: TaskAction, payload: TaskActionPayload): Promise<void> {
   busyTaskId.value = taskId
   actionError.value = ''
+  const hadPending = pendingTasks.value.length
   try {
     const task = await activeProvider().submitTaskAction(taskId, action, payload)
     const label = action === 'confirm' ? '已确认' : action === 'defer' ? '已延期' : '已记录跳过'
@@ -133,6 +147,11 @@ async function onTaskAction(taskId: string, action: TaskAction, payload: TaskAct
     showToast(`${label}：${task.title}`, 'success')
     speech.speak(`${label}：${task.title}`)
     await loadSnapshot()
+    // 最后一项任务处理完：彩带庆祝 + 语音鼓励。
+    if (hadPending === 1 && pendingTasks.value.length === 0 && doneTasks.value.length > 0) {
+      confetti.value?.fire()
+      speech.speak('今日照护任务全部完成，辛苦了！')
+    }
   } catch (cause) {
     actionError.value = cause instanceof Error ? cause.message : '操作失败，请稍后重试'
   } finally {
@@ -241,6 +260,16 @@ onMounted(reload)
         </details>
       </section>
 
+      <section v-if="trend.length > 0" aria-labelledby="trend-title">
+        <div class="section-heading">
+          <h2 id="trend-title"><span class="heading-dot" data-tone="accent" aria-hidden="true"></span>近 7 天完成情况</h2>
+        </div>
+        <div class="card" style="margin-top: 10px">
+          <TrendChart :points="trend" />
+          <p class="meta-line">柱高为当日完成比例；琥珀色为今天。数据来自计划确认事件。</p>
+        </div>
+      </section>
+
       <section aria-labelledby="risks-title">
         <div class="section-heading">
           <h2 id="risks-title"><span class="heading-dot" data-tone="warn" aria-hidden="true"></span>待关注风险</h2>
@@ -301,6 +330,8 @@ onMounted(reload)
     <footer class="disclaimer">
       教学演示，不用于诊断或治疗。系统不改变任何用药决定；紧急情况请联系医生或当地急救服务。
     </footer>
+
+    <ConfettiBurst ref="confetti" />
   </main>
 </template>
 
