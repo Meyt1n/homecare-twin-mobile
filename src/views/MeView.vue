@@ -214,11 +214,12 @@ function restoreDemoData(): void {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  background: var(--c-bg-deep);
+  background: rgba(37, 55, 48, 0.05);
   border: 1.5px solid transparent;
   border-radius: var(--r-btn);
   padding: 12px 14px;
   cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
   transition: border-color var(--speed), background var(--speed);
 }
 .mode-option:has(input:checked) {

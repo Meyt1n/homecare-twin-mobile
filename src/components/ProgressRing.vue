@@ -31,6 +31,12 @@ const label = computed(() => (props.total > 0 ? `${props.done}/${props.total}` :
     :aria-label="total > 0 ? `今日任务已完成 ${done} 项，共 ${total} 项` : '今日暂无任务'"
   >
     <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`" aria-hidden="true">
+      <defs>
+        <linearGradient id="hct-ring-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#ffe6bd" />
+          <stop offset="1" stop-color="#f2a355" />
+        </linearGradient>
+      </defs>
       <circle
         class="ring-track"
         :cx="size / 2"
@@ -61,11 +67,14 @@ const label = computed(() => (props.total > 0 ? `${props.done}/${props.total}` :
 
 <style scoped>
 .ring { position: relative; display: grid; place-items: center; }
+.ring svg { filter: drop-shadow(0 0 8px rgba(255, 217, 168, 0.45)); }
 .ring-track { stroke: rgba(255, 255, 255, 0.25); }
 .ring-value {
-  stroke: #ffd9a8;
-  transition: stroke-dashoffset 0.6s var(--ease);
+  stroke: url(#hct-ring-grad);
+  transition: stroke-dashoffset 0.8s var(--ease);
 }
+html[data-contrast='high'] .ring svg { filter: none; }
+html[data-contrast='high'] .ring-value { stroke: #ffd9a8; }
 .ring-center {
   position: absolute;
   display: grid;

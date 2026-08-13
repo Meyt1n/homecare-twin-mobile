@@ -125,10 +125,11 @@ function tryVoice(): void {
 <style scoped>
 .back-btn { justify-self: start; }
 .font-preview {
-  background: var(--c-bg-deep);
+  background: rgba(37, 55, 48, 0.05);
   border-radius: 12px;
   padding: 12px 14px;
   color: var(--c-ink-soft);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 html[data-contrast='high'] .font-preview { border: 2px solid #000; background: #fff; }
 </style>

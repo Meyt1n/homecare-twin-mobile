@@ -149,15 +149,24 @@ onMounted(reload)
 .filter-chip {
   min-height: calc(var(--tap) - 6px);
   padding: 4px 17px;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: var(--r-pill);
-  background: var(--c-bg-deep);
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   color: var(--c-ink-soft);
   font-weight: 800;
   cursor: pointer;
-  transition: background var(--speed), color var(--speed);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: background var(--speed), color var(--speed), transform var(--speed) var(--ease-spring);
 }
-.filter-chip[aria-pressed='true'] { background: var(--c-brand); color: #fff; }
+.filter-chip:active { transform: scale(0.94); }
+.filter-chip[aria-pressed='true'] {
+  background: linear-gradient(180deg, #3b7f67, #2f6d5a);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 8px 16px -8px rgba(47, 109, 90, 0.7);
+}
 html[data-contrast='high'] .filter-chip { border: 2px solid #000; background: #fff; }
 html[data-contrast='high'] .filter-chip[aria-pressed='true'] { background: var(--c-brand); color: #fff; }
 .risk-row { display: flex; align-items: center; gap: 12px; }

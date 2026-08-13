@@ -259,9 +259,10 @@ onBeforeUnmount(releasePreview)
 .metric-grid li {
   display: grid;
   gap: 2px;
-  background: var(--c-bg-deep);
+  background: rgba(37, 55, 48, 0.05);
   border-radius: 12px;
   padding: 9px 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 .metric-grid strong[data-passed='false'] { color: var(--c-danger-deep); }
 html[data-contrast='high'] .metric-grid li { border: 2px solid #000; background: #fff; }
