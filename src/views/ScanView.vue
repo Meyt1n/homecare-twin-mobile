@@ -237,9 +237,9 @@ onBeforeUnmount(releasePreview)
 .preview-box {
   display: flex;
   justify-content: center;
-  background: var(--c-primary-soft);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-sm);
+  background: var(--c-brand-softer);
+  border: 1px dashed var(--c-line-strong);
+  border-radius: calc(var(--r-card) - 8px);
   overflow: hidden;
 }
 .preview-box img { max-width: 100%; max-height: 300px; object-fit: contain; display: block; }
@@ -256,6 +256,13 @@ onBeforeUnmount(releasePreview)
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
-.metric-grid li { display: grid; gap: 2px; border-top: 2px solid var(--c-border); padding-top: 6px; }
-.metric-grid strong[data-passed='false'] { color: var(--c-red-deep); }
+.metric-grid li {
+  display: grid;
+  gap: 2px;
+  background: var(--c-bg-deep);
+  border-radius: 12px;
+  padding: 9px 12px;
+}
+.metric-grid strong[data-passed='false'] { color: var(--c-danger-deep); }
+html[data-contrast='high'] .metric-grid li { border: 2px solid #000; background: #fff; }
 </style>

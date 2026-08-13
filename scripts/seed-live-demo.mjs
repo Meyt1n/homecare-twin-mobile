@@ -15,7 +15,7 @@ function argOf(flag, fallback) {
   return index >= 0 && args[index + 1] ? args[index + 1] : fallback
 }
 
-const BASE = argOf('--base', 'http://127.0.0.1:8000')
+const BASE = argOf('--base', 'http://127.0.0.1:18800')
 const OWNER = argOf('--actor', 'dev-wang')
 const CAREGIVER = argOf('--caregiver', 'dev-uncle')
 const HOUSEHOLD_NAME = '演示家庭（联调）'

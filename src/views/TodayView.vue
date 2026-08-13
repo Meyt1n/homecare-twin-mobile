@@ -5,14 +5,17 @@ import AppIcon from '@/components/AppIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import LevelTag from '@/components/LevelTag.vue'
 import PrivacyBadge from '@/components/PrivacyBadge.vue'
+import ProgressRing from '@/components/ProgressRing.vue'
 import TaskCard from '@/components/TaskCard.vue'
 import { createSpeaker, useSpeech } from '@/composables/useSpeech'
 import { activeProvider } from '@/data'
-import { eventStatusLabel, riskLevelLabel, taskLevelLabel } from '@/data/labels'
+import { eventStatusLabel, riskLevelLabel, riskLevelTone, taskLevelLabel } from '@/data/labels'
 import type { MemberSummary, TaskAction, TaskActionPayload, TodaySnapshot } from '@/data/types'
 import { useA11y } from '@/stores/accessibility'
 import { useSession } from '@/stores/session'
 import { formatDateTime, greetingByHour } from '@/utils/format'
+
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 
 const { session, updateSession } = useSession()
 const { settings } = useA11y()
@@ -29,6 +32,10 @@ const busyTaskId = ref('')
 const announced = ref(false)
 
 const greeting = computed(() => greetingByHour(new Date().getHours()))
+const dateLine = computed(() => {
+  const now = new Date()
+  return `${now.getMonth() + 1}月${now.getDate()}日 星期${WEEKDAYS[now.getDay()]}`
+})
 const currentMember = computed(() => members.value.find(m => m.id === session.currentMemberId) ?? null)
 
 const pendingTasks = computed(
@@ -137,11 +144,36 @@ onMounted(reload)
 
 <template>
   <main id="main" class="screen">
-    <header class="screen-header">
-      <p class="eyebrow">家健镜 · 随身照护</p>
-      <h1>{{ greeting }}</h1>
-      <PrivacyBadge />
-    </header>
+    <section class="hero" aria-label="今日概览">
+      <div class="hero-top">
+        <div class="hero-text">
+          <p class="hero-eyebrow">家健镜 · 随身照护</p>
+          <h1>{{ greeting }}{{ currentMember ? `，${currentMember.name.replace(/（.*?）/g, '')}` : '' }}</h1>
+          <p class="hero-sub">{{ dateLine }}</p>
+        </div>
+        <ProgressRing :done="doneTasks.length" :total="snapshot?.tasks.length ?? 0" />
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <strong>{{ pendingTasks.length }}</strong>
+          <span>待处理任务</span>
+        </div>
+        <div class="hero-stat">
+          <strong>{{ snapshot?.risks.length ?? 0 }}</strong>
+          <span>待关注风险</span>
+        </div>
+        <div class="hero-stat">
+          <strong>{{ snapshot?.recentEvents.length ?? 0 }}</strong>
+          <span>最近变化</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn-ghost" @click="speakSummary">
+        <AppIcon name="sound" :size="18" />
+        听一遍今日安排
+      </button>
+    </section>
+
+    <PrivacyBadge />
 
     <label class="field">
       当前成员
@@ -151,11 +183,6 @@ onMounted(reload)
         </option>
       </select>
     </label>
-
-    <button type="button" class="btn btn-quiet" @click="speakSummary">
-      <AppIcon name="sound" :size="18" />
-      语音播报今日安排
-    </button>
 
     <p v-if="error" class="notice" data-tone="error" role="alert">{{ error }}</p>
     <p v-if="actionError" class="notice" data-tone="error" role="alert">{{ actionError }}</p>
@@ -188,7 +215,7 @@ onMounted(reload)
         </div>
         <details v-if="doneTasks.length > 0" class="done-tasks">
           <summary>已处理（{{ doneTasks.length }}）</summary>
-          <ul class="divided-list">
+          <ul class="card divided-list">
             <li v-for="task in doneTasks" :key="task.id">
               <div class="card-title-row">
                 <strong>{{ task.title }}</strong>
@@ -218,12 +245,19 @@ onMounted(reload)
             class="card risk-link"
             :to="`/alerts/${risk.memberId}/${encodeURIComponent(risk.ruleId)}`"
           >
-            <div class="card-title-row">
-              <LevelTag kind="risk" :value="risk.level" />
-              <span class="meta-line">证据 {{ risk.sourceCount }} 条</span>
+            <div class="risk-row">
+              <span class="icon-disc" :data-tone="riskLevelTone(risk.level)" aria-hidden="true">
+                <AppIcon name="alert" :size="21" />
+              </span>
+              <div class="risk-body">
+                <p class="risk-message">{{ risk.message }}</p>
+                <span class="meta-line">
+                  <LevelTag kind="risk" :value="risk.level" />
+                  证据 {{ risk.sourceCount }} 条
+                </span>
+              </div>
+              <AppIcon name="chevron-right" :size="17" />
             </div>
-            <p class="risk-message">{{ risk.message }}</p>
-            <span class="meta-line">查看依据与建议 <AppIcon name="chevron-right" :size="14" /></span>
           </RouterLink>
         </div>
       </section>
@@ -253,16 +287,24 @@ onMounted(reload)
 </template>
 
 <style scoped>
-.risk-link { text-decoration: none; color: inherit; }
-.risk-message { font-weight: 700; }
-.done-tasks { margin-top: 10px; }
+.hero-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.hero-text { flex: 1; display: grid; gap: 5px; min-width: 0; }
+.risk-row { display: flex; align-items: center; gap: 12px; }
+.risk-body { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.risk-message { font-weight: 700; line-height: 1.4; }
+.done-tasks { margin-top: 12px; }
 .done-tasks summary {
   cursor: pointer;
-  font-weight: 700;
-  color: var(--c-text-soft);
+  font-weight: 800;
+  color: var(--c-ink-soft);
   min-height: var(--tap);
   display: flex;
   align-items: center;
+  padding: 0 4px;
 }
-.done-tasks ul { margin-top: 6px; }
+.done-tasks ul { margin-top: 8px; }
 </style>

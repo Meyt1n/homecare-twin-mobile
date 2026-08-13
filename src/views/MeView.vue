@@ -214,11 +214,18 @@ function restoreDemoData(): void {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  border: 1.5px solid var(--c-border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  background: var(--c-bg-deep);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-btn);
+  padding: 12px 14px;
   cursor: pointer;
+  transition: border-color var(--speed), background var(--speed);
 }
+.mode-option:has(input:checked) {
+  background: var(--c-brand-softer);
+  border-color: var(--c-brand);
+}
+html[data-contrast='high'] .mode-option { border-color: #000; background: #fff; }
 .mode-option input { width: 20px; height: 20px; margin-top: 3px; flex: 0 0 auto; }
 .mode-option > span { display: grid; gap: 2px; }
 </style>

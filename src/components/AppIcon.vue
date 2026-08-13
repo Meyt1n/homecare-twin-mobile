@@ -17,6 +17,7 @@ export type IconName =
   | 'refresh'
   | 'eye'
   | 'heart'
+  | 'pill'
 
 const props = withDefaults(
   defineProps<{
@@ -54,6 +55,10 @@ const PATHS: Record<IconName, string[]> = {
   refresh: ['M20 12a8 8 0 1 1-2.3-5.7', 'M20 3.5V8h-4.5'],
   eye: ['M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z', 'M12 14.8a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6z'],
   heart: ['M12 20c-6-4.5-9-7.4-9-11a5 5 0 0 1 9-2.6A5 5 0 0 1 21 9c0 3.6-3 6.5-9 11z'],
+  pill: [
+    'M8.7 4.2a5.4 5.4 0 0 1 7.6 0l3.5 3.5a5.4 5.4 0 0 1 0 7.6l-4.5 4.5a5.4 5.4 0 0 1-7.6 0l-3.5-3.5a5.4 5.4 0 0 1 0-7.6z',
+    'M6.9 9.6l7.5 7.5',
+  ],
 }
 </script>
 

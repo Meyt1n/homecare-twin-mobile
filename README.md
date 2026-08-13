@@ -4,7 +4,7 @@
 >
 > 配套主仓库（网页端 + FastAPI 后端）：[issedu_ysu2026_3709](https://github.com/Meyt1n/issedu_ysu2026_3709)
 
-家健镜随身版是移动端 H5 应用：老人和照护者用手机完成**每天真正高频的照护动作**——确认服药任务、拍药盒录入、查看分级提醒和一键求助；管理、复核、大屏和模型实验室等重度操作仍由网页端承担。两端共用同一套术语、色彩体系与 API 契约。
+家健镜随身版是移动端应用（H5 + Capacitor 安卓壳）：老人和照护者用手机完成**每天真正高频的照护动作**——确认服药任务、拍药盒录入、查看分级提醒和一键求助；管理、复核、大屏和模型实验室等重度操作仍由网页端承担。两端共用同一套术语与 API 契约；移动端拥有**独立的视觉体系**（暖奶油底 + 森林绿 + 蜜桃琥珀，渐变英雄卡、任务进度环、悬浮胶囊导航），按移动场景与适老审美设计，不复刻网页端样式。
 
 > **产品硬承诺（与主仓库一致）：** 家庭健康数据默认不出网；药盒识别永远需要人工确认，冲突/未知不自动入库；照护者只能看到被精细授权的字段；风险等级由确定性规则决定，应用不做诊断、处方、停药、换药或剂量判断；无购药、问诊、广告导流。
 
@@ -43,7 +43,7 @@
 
 - Vue 3.5 + TypeScript 5.7 + Vite 6（与主仓库网页端同栈同版本）；
 - vue-router 4（hash 路由，任意静态托管可用）；
-- 无 UI 组件库：手写设计系统（CSS 自定义属性驱动无障碍模式）；
+- 无 UI 组件库：手写设计系统 v2（暖色渐变 + 大圆角 + 柔和阴影；全部由 CSS 自定义属性驱动，无障碍模式下自动切换高对比、去动效、放大触控目标）；
 - vitest + happy-dom 单元测试；
 - PWA manifest，支持"添加到主屏幕"；
 - Capacitor 8 安卓壳：同一套 Web 代码打包为原生 Android 应用（见下文"安卓应用"）。
@@ -84,17 +84,18 @@ npm run build      # 产物输出到 dist/
 
 ```powershell
 # 1. 在主仓库启动后端（独立 SQLite + 放开本页面所需 CORS）
+#    默认用 18800 端口避开常见冲突；被占用时换任意空闲端口即可
 $env:DATABASE_URL = "sqlite+pysqlite:///./homecare-mobile-demo.sqlite3"
 $env:CORS_ORIGINS = "http://localhost:5173,http://localhost:5175,https://localhost,http://localhost,capacitor://localhost"
 $env:PYTHONPATH = "<主仓库>\src\api;<主仓库>\src"
 uv run alembic upgrade head
-uv run uvicorn app.main:app --app-dir src/api --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --app-dir src/api --host 0.0.0.0 --port 18800
 
 # 2. 在本仓库写入虚构联调数据（幂等，可重复执行）
-npm run seed:live            # 等价于 node scripts/seed-live-demo.mjs
+npm run seed:live -- --base http://127.0.0.1:18800
 
-# 3. 启动移动端并指向后端
-$env:HOMECARE_API = "http://127.0.0.1:8000"; npm run dev
+# 3. 启动移动端（dev 代理默认指向 18800；连其它实例用 HOMECARE_API 覆盖）
+npm run dev
 ```
 
 应用内切到"我的 → 数据来源 → 家庭服务器"，身份填 `dev-wang`（owner）或 `dev-uncle`（仅被授权读王秀兰事件的照护者），目的代码保持 `family-care`。网页端（主仓库 `npm run dev:web`）连同一后端即可两端互通。
@@ -111,12 +112,21 @@ $env:HOMECARE_API = "http://127.0.0.1:8000"; npm run dev
 
 同一套代码通过 Capacitor 打包为原生 Android 应用，WebView 内置打包产物，联机数据走"我的 → 数据来源"里配置的家庭服务器地址（`AndroidManifest` 已允许家庭局域网明文 http）。
 
+一键构建（推荐）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build-apk.ps1
+# 产物：android\app\build\outputs\apk\debug\app-debug.apk
+```
+
+手动步骤（等价）：
+
 ```powershell
 npm run android:sync                 # 构建 Web 产物并同步到 android/ 工程
 cd android
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"   # 或任何 JDK 21
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"   # 或任何 JDK 21+
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
-.\gradlew.bat assembleDebug          # 产物：android\app\build\outputs\apk\debug\app-debug.apk
+.\gradlew.bat assembleDebug
 ```
 
 说明：

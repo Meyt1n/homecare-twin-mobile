@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 import AppIcon from '@/components/AppIcon.vue'
 import LevelTag from '@/components/LevelTag.vue'
+import { taskLevelTone } from '@/data/labels'
 import type { CareTask, TaskAction, TaskActionPayload } from '@/data/types'
 import { formatDateTime } from '@/utils/format'
 
@@ -46,16 +47,24 @@ function submitSkip(): void {
 
 <template>
   <article class="card task-card">
-    <div class="card-title-row">
-      <LevelTag kind="task" :value="props.task.level" />
-      <LevelTag v-if="props.task.status !== 'PENDING'" kind="taskStatus" :value="props.task.status" />
+    <div class="task-head">
+      <span class="icon-disc" :data-tone="taskLevelTone(props.task.level)" aria-hidden="true">
+        <AppIcon name="pill" :size="22" />
+      </span>
+      <div class="task-title">
+        <h3>{{ props.task.title }}</h3>
+        <p class="meta-line">
+          <AppIcon name="clock" :size="14" />
+          {{ formatDateTime(props.task.dueAt) }}
+          <template v-if="props.showMember">· {{ props.task.memberName }}</template>
+        </p>
+      </div>
+      <div class="task-tags">
+        <LevelTag kind="task" :value="props.task.level" />
+        <LevelTag v-if="props.task.status !== 'PENDING'" kind="taskStatus" :value="props.task.status" />
+      </div>
     </div>
-    <h3>{{ props.task.title }}</h3>
-    <p class="meta-line">
-      <AppIcon name="clock" :size="15" />
-      {{ formatDateTime(props.task.dueAt) }}
-      <template v-if="props.showMember">· {{ props.task.memberName }}</template>
-    </p>
+
     <p class="task-detail">{{ props.task.detail }}</p>
     <p v-if="props.task.skipReason" class="meta-line">跳过原因：{{ props.task.skipReason }}</p>
 
@@ -63,7 +72,7 @@ function submitSkip(): void {
       <div class="btn-row">
         <button type="button" class="btn" :disabled="props.busy" @click="confirm">
           <AppIcon name="check" :size="18" />
-          确认完成
+          完成
         </button>
         <button
           type="button"
@@ -72,7 +81,7 @@ function submitSkip(): void {
           :aria-expanded="panel === 'defer'"
           @click="panel = panel === 'defer' ? 'none' : 'defer'"
         >
-          稍后提醒
+          稍后
         </button>
         <button
           type="button"
@@ -116,11 +125,14 @@ function submitSkip(): void {
 </template>
 
 <style scoped>
-.task-detail { color: var(--c-text-soft); font-size: 0.92rem; }
+.task-head { display: flex; gap: 12px; align-items: flex-start; }
+.task-title { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.task-tags { display: grid; gap: 5px; justify-items: end; }
+.task-detail { color: var(--c-ink-soft); font-size: 0.9rem; }
 .task-panel {
-  border-top: 1px solid var(--c-border);
-  padding-top: 10px;
+  border-top: 1px solid var(--c-line);
+  padding-top: 12px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 </style>

@@ -13,7 +13,9 @@ withDefaults(
 
 <template>
   <div class="empty-state">
-    <AppIcon :name="icon" :size="28" />
+    <span class="empty-icon" aria-hidden="true">
+      <AppIcon :name="icon" :size="26" />
+    </span>
     <p>{{ title }}</p>
     <p v-if="hint" class="meta-line">{{ hint }}</p>
   </div>

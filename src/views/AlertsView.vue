@@ -7,7 +7,7 @@ import LevelTag from '@/components/LevelTag.vue'
 import PrivacyBadge from '@/components/PrivacyBadge.vue'
 import { createSpeaker } from '@/composables/useSpeech'
 import { activeProvider } from '@/data'
-import { riskLevelLabel } from '@/data/labels'
+import { riskLevelLabel, riskLevelTone } from '@/data/labels'
 import type { RiskCard } from '@/data/types'
 import { formatDateTime } from '@/utils/format'
 
@@ -117,17 +117,24 @@ onMounted(reload)
         class="card risk-card"
         :to="`/alerts/${risk.memberId}/${encodeURIComponent(risk.ruleId)}`"
       >
-        <div class="card-title-row">
-          <LevelTag kind="risk" :value="risk.level" />
-          <span v-if="risk.acknowledged" class="tag" data-tone="calm">已记录知晓</span>
+        <div class="risk-row">
+          <span class="icon-disc" :data-tone="riskLevelTone(risk.level)" aria-hidden="true">
+            <AppIcon name="alert" :size="21" />
+          </span>
+          <div class="risk-body">
+            <p class="risk-message">{{ risk.message }}</p>
+            <p class="meta-line">
+              <LevelTag kind="risk" :value="risk.level" />
+              <span v-if="risk.acknowledged" class="tag" data-tone="calm">已记录知晓</span>
+            </p>
+            <p class="meta-line">
+              {{ risk.memberName }}
+              <template v-if="risk.createdAt"> · {{ formatDateTime(risk.createdAt) }}</template>
+              · 证据 {{ risk.sourceCount }} 条
+            </p>
+          </div>
+          <AppIcon name="chevron-right" :size="17" />
         </div>
-        <p class="risk-message">{{ risk.message }}</p>
-        <p class="meta-line">
-          {{ risk.memberName }}
-          <template v-if="risk.createdAt"> · {{ formatDateTime(risk.createdAt) }}</template>
-          · 证据 {{ risk.sourceCount }} 条
-        </p>
-        <span class="meta-line">查看依据 <AppIcon name="chevron-right" :size="14" /></span>
       </RouterLink>
     </div>
 
@@ -140,16 +147,20 @@ onMounted(reload)
 <style scoped>
 .filter-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .filter-chip {
-  min-height: var(--tap);
-  padding: 4px 16px;
-  border: 1.5px solid var(--c-primary);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--c-primary);
-  font-weight: 700;
+  min-height: calc(var(--tap) - 6px);
+  padding: 4px 17px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--c-bg-deep);
+  color: var(--c-ink-soft);
+  font-weight: 800;
   cursor: pointer;
+  transition: background var(--speed), color var(--speed);
 }
-.filter-chip[aria-pressed='true'] { background: var(--c-primary); color: #fff; }
-.risk-card { text-decoration: none; color: inherit; }
-.risk-message { font-weight: 700; }
+.filter-chip[aria-pressed='true'] { background: var(--c-brand); color: #fff; }
+html[data-contrast='high'] .filter-chip { border: 2px solid #000; background: #fff; }
+html[data-contrast='high'] .filter-chip[aria-pressed='true'] { background: var(--c-brand); color: #fff; }
+.risk-row { display: flex; align-items: center; gap: 12px; }
+.risk-body { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.risk-message { font-weight: 700; line-height: 1.4; }
 </style>
